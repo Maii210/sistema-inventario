@@ -1,11 +1,11 @@
 import React from 'react';
 import { ArrowLeft, Gift, Heart, Star, Package, MessageCircle, Sparkles } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-import { perfumes } from '../../data/perfumes';
 
 export function GiftMode() {
-  const { dispatch } = useApp();
-  const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
+  const { state, dispatch } = useApp();
+  const { perfumes } = state;
+const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
   const [selectedOccasion, setSelectedOccasion] = React.useState<string>('');
   const [priceRange, setPriceRange] = React.useState<string>('');
 

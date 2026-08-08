@@ -1,11 +1,11 @@
 import React from 'react';
 import { Star, ShoppingBag, Heart, Eye, Filter } from 'lucide-react';
-import { perfumes } from '../../data/perfumes';
 import { useApp } from '../../contexts/AppContext';
 import { ProductFilters } from './ProductFilters';
 
 export function ProductGrid() {
   const { state, dispatch } = useApp();
+  const { perfumes } = state;
   const [showFilters, setShowFilters] = React.useState(false);
 
   // Filter perfumes based on current filters and search

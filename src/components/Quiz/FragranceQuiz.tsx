@@ -2,11 +2,11 @@ import React from 'react';
 import { ArrowLeft, ArrowRight, Sparkles, RefreshCw } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { quizQuestions } from '../../data/quiz';
-import { perfumes } from '../../data/perfumes';
 
 export function FragranceQuiz() {
-  const { dispatch } = useApp();
-  const [currentQuestion, setCurrentQuestion] = React.useState(0);
+  const { state, dispatch } = useApp();
+  const { perfumes } = state;
+const [currentQuestion, setCurrentQuestion] = React.useState(0);
   const [answers, setAnswers] = React.useState<Record<string, string>>({});
   const [showResult, setShowResult] = React.useState(false);
   const [recommendedPerfume, setRecommendedPerfume] = React.useState<typeof perfumes[0] | null>(null);
