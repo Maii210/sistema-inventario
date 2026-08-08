@@ -47,6 +47,8 @@ export interface User {
   email: string;
   phone?: string;
   address?: Address;
+  role?: 'admin' | 'customer';
+  createdAt?: string;
 }
 
 export interface Address {
@@ -83,4 +85,34 @@ export interface QuizResult {
   perfumeId: string;
   confidence: number;
   reasons: string[];
+}
+
+export interface OrderItem {
+  perfumeId: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+export type PaymentStatus = 'pendiente' | 'verificado' | 'rechazado';
+export type OrderStatus = 'pendiente' | 'pagado' | 'enviado' | 'entregado' | 'cancelado';
+
+export interface Order {
+  id: string;
+  date: string;
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+    address?: string;
+    city?: string;
+    state?: string;
+  };
+  items: OrderItem[];
+  subtotal: number;
+  shipping: number;
+  total: number;
+  paymentMethod: 'card' | 'qr' | 'transfer';
+  paymentStatus: PaymentStatus;
+  orderStatus: OrderStatus;
 }
