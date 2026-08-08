@@ -1,11 +1,11 @@
 import React from 'react';
 import { Star, ShoppingBag, Heart, Eye } from 'lucide-react';
-import { perfumes } from '../../data/perfumes';
 import { useApp } from '../../contexts/AppContext';
 
 export function FeaturedProducts() {
-  const { dispatch } = useApp();
-  
+  const { state, dispatch } = useApp();
+  const { perfumes } = state;
+
   const featuredPerfumes = perfumes.filter(p => p.isPopular || p.isNew).slice(0, 4);
 
   const handleViewProduct = (perfume: typeof perfumes[0]) => {

@@ -1,11 +1,11 @@
 import React from 'react';
 import { ArrowLeft, Star, ThumbsUp, MessageCircle, Filter, Search, User, Calendar, CheckCircle } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-import { perfumes } from '../../data/perfumes';
 
 export function ReviewsSection() {
-  const { dispatch } = useApp();
-  const [selectedPerfume, setSelectedPerfume] = React.useState<string>('all');
+  const { state, dispatch } = useApp();
+  const { perfumes } = state;
+const [selectedPerfume, setSelectedPerfume] = React.useState<string>('all');
   const [sortBy, setSortBy] = React.useState<string>('recent');
   const [filterRating, setFilterRating] = React.useState<number>(0);
   const [searchQuery, setSearchQuery] = React.useState<string>('');

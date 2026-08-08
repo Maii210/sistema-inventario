@@ -1,11 +1,11 @@
 import React from 'react';
 import { ArrowLeft, Plus, X, Star, ShoppingBag } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-import { perfumes } from '../../data/perfumes';
 
 export function ProductComparator() {
-  const { dispatch } = useApp();
-  const [selectedPerfumes, setSelectedPerfumes] = React.useState<typeof perfumes>([]);
+  const { state, dispatch } = useApp();
+  const { perfumes } = state;
+const [selectedPerfumes, setSelectedPerfumes] = React.useState<typeof perfumes>([]);
   const [showSelector, setShowSelector] = React.useState(false);
 
   const handleBack = () => {

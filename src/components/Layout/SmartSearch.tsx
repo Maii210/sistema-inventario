@@ -1,7 +1,6 @@
 import React from 'react';
 import { Search, Clock, TrendingUp, X } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-import { perfumes } from '../../data/perfumes';
 
 interface SearchSuggestion {
   id: string;
@@ -12,6 +11,7 @@ interface SearchSuggestion {
 
 export function SmartSearch() {
   const { state, dispatch } = useApp();
+  const { perfumes } = state;
   const [isOpen, setIsOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState(state.searchQuery);
   const [recentSearches, setRecentSearches] = React.useState<string[]>(() => {
