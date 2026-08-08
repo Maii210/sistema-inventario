@@ -1,9 +1,10 @@
 import React from 'react';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { ADMIN_CREDENTIALS } from '../../data/adminConfig';
 
 export function Login() {
-  const { dispatch } = useApp();
+  const { state, dispatch } = useApp();
   const [isLogin, setIsLogin] = React.useState(true);
   const [showPassword, setShowPassword] = React.useState(false);
   const [formData, setFormData] = React.useState({
@@ -24,16 +25,35 @@ export function Login() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Simular login/registro exitoso
-    const user = {
-      id: '1',
-      name: isLogin ? 'Usuario' : formData.name,
+
+    if (isLogin) {
+      if (formData.email === ADMIN_CREDENTIALS.email && formData.password === ADMIN_CREDENTIALS.password) {
+        dispatch({
+          type: 'SET_USER',
+          payload: { id: 'admin', name: 'Administrador', email: formData.email, role: 'admin' }
+        });
+        dispatch({ type: 'SET_CURRENT_VIEW', payload: 'admin' });
+        return;
+      }
+      const existing = state.users.find(u => u.email === formData.email);
+      dispatch({
+        type: 'SET_USER',
+        payload: existing ?? { id: Date.now().toString(), name: 'Usuario', email: formData.email, role: 'customer' }
+      });
+      dispatch({ type: 'SET_CURRENT_VIEW', payload: 'home' });
+      return;
+    }
+
+    const newUser = {
+      id: Date.now().toString(),
+      name: formData.name,
       email: formData.email,
-      phone: formData.phone
+      phone: formData.phone,
+      role: 'customer' as const,
+      createdAt: new Date().toISOString()
     };
-    
-    dispatch({ type: 'SET_USER', payload: user });
+    dispatch({ type: 'ADD_USER', payload: newUser });
+    dispatch({ type: 'SET_USER', payload: newUser });
     dispatch({ type: 'SET_CURRENT_VIEW', payload: 'home' });
   };
 
