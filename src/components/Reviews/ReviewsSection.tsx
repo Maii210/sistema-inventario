@@ -5,7 +5,7 @@ import { useApp } from '../../contexts/AppContext';
 export function ReviewsSection() {
   const { state, dispatch } = useApp();
   const { perfumes } = state;
-const [selectedPerfume, setSelectedPerfume] = React.useState<string>('all');
+  const [selectedPerfume, setSelectedPerfume] = React.useState<string>('all');
   const [sortBy, setSortBy] = React.useState<string>('recent');
   const [filterRating, setFilterRating] = React.useState<number>(0);
   const [searchQuery, setSearchQuery] = React.useState<string>('');
@@ -60,7 +60,7 @@ const [selectedPerfume, setSelectedPerfume] = React.useState<string>('all');
       reviews.push(...additionalReviews);
     });
     return reviews;
-  }, []);
+  }, [perfumes]);
 
   const filteredReviews = React.useMemo(() => {
     let filtered = [...allReviews];

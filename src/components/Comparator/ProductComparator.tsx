@@ -5,7 +5,7 @@ import { useApp } from '../../contexts/AppContext';
 export function ProductComparator() {
   const { state, dispatch } = useApp();
   const { perfumes } = state;
-const [selectedPerfumes, setSelectedPerfumes] = React.useState<typeof perfumes>([]);
+  const [selectedPerfumes, setSelectedPerfumes] = React.useState<typeof perfumes>([]);
   const [showSelector, setShowSelector] = React.useState(false);
 
   const handleBack = () => {

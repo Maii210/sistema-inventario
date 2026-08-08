@@ -5,7 +5,7 @@ import { useApp } from '../../contexts/AppContext';
 export function GiftMode() {
   const { state, dispatch } = useApp();
   const { perfumes } = state;
-const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
   const [selectedOccasion, setSelectedOccasion] = React.useState<string>('');
   const [priceRange, setPriceRange] = React.useState<string>('');
 
@@ -62,7 +62,7 @@ const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
     }
 
     return filtered.slice(0, 6);
-  }, [selectedCategory, priceRange]);
+  }, [perfumes, selectedCategory, priceRange]);
 
   const handleViewProduct = (perfume: typeof perfumes[0]) => {
     dispatch({ type: 'SET_SELECTED_PERFUME', payload: perfume });
