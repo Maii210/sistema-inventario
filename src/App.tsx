@@ -16,6 +16,7 @@ import { Chatbot } from './components/Chatbot/Chatbot';
 import { Login } from './components/Auth/Login';
 import { GiftMode } from './components/Gift/GiftMode';
 import { ReviewsSection } from './components/Reviews/ReviewsSection';
+import { AdminPanel } from './components/Admin/AdminPanel';
 
 function AppContent() {
   const { state } = useApp();
@@ -50,6 +51,8 @@ function AppContent() {
         return <GiftMode />;
       case 'reviews':
         return <ReviewsSection />;
+      case 'admin':
+        return <AdminPanel />;
       default:
         return (
           <>
@@ -67,7 +70,7 @@ function AppContent() {
       <main>
         {renderCurrentView()}
       </main>
-      {!['quiz', 'comparator', 'guide', 'login', 'gift', 'reviews'].includes(state.currentView) && <Footer />}
+      {!['quiz', 'comparator', 'guide', 'login', 'gift', 'reviews', 'admin'].includes(state.currentView) && <Footer />}
       <Chatbot />
     </div>
   );

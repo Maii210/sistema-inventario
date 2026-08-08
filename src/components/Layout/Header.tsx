@@ -113,8 +113,16 @@ export function Header() {
                       <button className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors">
                         Favoritos
                       </button>
+                      {state.user.role === 'admin' && (
+                        <button
+                          onClick={() => handleViewChange('admin')}
+                          className="w-full text-left px-4 py-2 text-essence-purple hover:bg-essence-purple/5 transition-colors font-medium"
+                        >
+                          Panel Admin
+                        </button>
+                      )}
                       <div className="border-t border-gray-100 mt-2 pt-2">
-                        <button 
+                        <button
                           onClick={handleLogout}
                           className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
                         >
