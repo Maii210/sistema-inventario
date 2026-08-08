@@ -65,7 +65,7 @@ export function SmartSearch() {
     });
 
     return suggestions;
-  }, []);
+  }, [perfumes]);
 
   // Filtrar sugerencias basadas en el input
   const filteredSuggestions = React.useMemo(() => {

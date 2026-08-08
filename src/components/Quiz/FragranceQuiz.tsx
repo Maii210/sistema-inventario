@@ -6,7 +6,7 @@ import { quizQuestions } from '../../data/quiz';
 export function FragranceQuiz() {
   const { state, dispatch } = useApp();
   const { perfumes } = state;
-const [currentQuestion, setCurrentQuestion] = React.useState(0);
+  const [currentQuestion, setCurrentQuestion] = React.useState(0);
   const [answers, setAnswers] = React.useState<Record<string, string>>({});
   const [showResult, setShowResult] = React.useState(false);
   const [recommendedPerfume, setRecommendedPerfume] = React.useState<typeof perfumes[0] | null>(null);
