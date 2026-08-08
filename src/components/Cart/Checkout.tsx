@@ -42,7 +42,32 @@ export function Checkout() {
   };
 
   const handlePlaceOrder = () => {
-    // Here you would typically process the payment and create the order
+    const order = {
+      id: Date.now().toString(),
+      date: new Date().toISOString(),
+      customer: {
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state
+      },
+      items: state.cart.map(item => ({
+        perfumeId: item.perfume.id,
+        name: item.perfume.name,
+        price: item.perfume.price,
+        quantity: item.quantity
+      })),
+      subtotal,
+      shipping,
+      total,
+      paymentMethod: formData.paymentMethod as 'card' | 'qr' | 'transfer',
+      paymentStatus: 'pendiente' as const,
+      orderStatus: 'pendiente' as const
+    };
+
+    dispatch({ type: 'ADD_ORDER', payload: order });
     dispatch({ type: 'CLEAR_CART' });
     dispatch({ type: 'SET_CURRENT_VIEW', payload: 'home' });
     alert('¡Pedido realizado con éxito! Recibirás un email de confirmación.');
