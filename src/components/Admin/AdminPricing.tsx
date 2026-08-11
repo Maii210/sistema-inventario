@@ -1,6 +1,7 @@
 import React from 'react';
-import { Save } from 'lucide-react';
+import { Save, DollarSign } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { AdminModuleHeader } from './AdminModuleHeader';
 
 export function AdminPricing() {
   const { state, dispatch } = useApp();
@@ -44,15 +45,19 @@ export function AdminPricing() {
 
   return (
     <div>
-      <h1 className="font-playfair text-3xl font-bold text-essence-navy mb-8">Precios y stock</h1>
+      <AdminModuleHeader
+        title="Precios y stock"
+        subtitle="Ajusta precios de venta, ofertas y existencias"
+        icon={DollarSign}
+      />
       <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
         <table className="w-full text-left">
           <thead className="bg-essence-navy/5">
             <tr>
               <th className="px-4 py-3">Perfume</th>
-              <th className="px-4 py-3">Precio</th>
-              <th className="px-4 py-3">Precio original</th>
-              <th className="px-4 py-3">Stock</th>
+              <th className="px-4 py-3">Precio de venta (BOB)</th>
+              <th className="px-4 py-3">Precio antes de oferta (BOB)</th>
+              <th className="px-4 py-3">Unidades en stock</th>
               <th className="px-4 py-3 text-right">Guardar</th>
             </tr>
           </thead>

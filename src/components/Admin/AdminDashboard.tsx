@@ -1,7 +1,8 @@
 import React from 'react';
-import { Package, DollarSign, AlertTriangle, ShoppingCart, Star, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Package, DollarSign, AlertTriangle, ShoppingCart, Star, TrendingUp } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { LOW_STOCK_THRESHOLD } from '../../data/adminConfig';
+import { AdminModuleHeader } from './AdminModuleHeader';
 
 export function AdminDashboard() {
   const { state } = useApp();
@@ -26,7 +27,11 @@ export function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="font-playfair text-3xl font-bold text-essence-navy mb-8">Dashboard</h1>
+      <AdminModuleHeader
+        title="Dashboard"
+        subtitle="Resumen de tu perfumería: inventario, ventas y reseñas de un vistazo"
+        icon={LayoutDashboard}
+      />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
         {cards.map(c => (
           <div key={c.label} className="bg-white rounded-2xl shadow-lg p-6 flex items-center space-x-4">

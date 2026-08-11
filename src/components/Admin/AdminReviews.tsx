@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, Trash2, BadgeCheck } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { AdminModuleHeader } from './AdminModuleHeader';
 
 export function AdminReviews() {
   const { state, dispatch } = useApp();
@@ -8,7 +9,11 @@ export function AdminReviews() {
 
   return (
     <div>
-      <h1 className="font-playfair text-3xl font-bold text-essence-navy mb-8">Reseñas</h1>
+      <AdminModuleHeader
+        title="Reseñas"
+        subtitle="Modera las opiniones de tus clientes: verifica o elimina"
+        icon={Star}
+      />
 
       {withReviews.length === 0 ? (
         <p className="text-gray-500">Aún no hay reseñas.</p>

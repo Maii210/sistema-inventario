@@ -1,8 +1,9 @@
 import React from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Package } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { Perfume } from '../../types';
 import { PerfumeForm } from './PerfumeForm';
+import { AdminModuleHeader } from './AdminModuleHeader';
 
 export function AdminPerfumes() {
   const { state, dispatch } = useApp();
@@ -38,8 +39,12 @@ export function AdminPerfumes() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="font-playfair text-3xl font-bold text-essence-navy">Perfumes</h1>
+      <div className="flex items-center justify-between">
+        <AdminModuleHeader
+          title="Perfumes"
+          subtitle="Agrega, edita y organiza tu catálogo con precios y stock"
+          icon={Package}
+        />
         <button
           onClick={() => setCreating(true)}
           className="flex items-center space-x-2 bg-gradient-to-r from-essence-coral to-essence-rose text-white px-5 py-3 rounded-xl font-semibold hover:shadow-lg"
@@ -62,7 +67,7 @@ export function AdminPerfumes() {
             <tr>
               <th className="px-4 py-3">Perfume</th>
               <th className="px-4 py-3">Marca</th>
-              <th className="px-4 py-3">Precio</th>
+              <th className="px-4 py-3">Precio de venta (BOB)</th>
               <th className="px-4 py-3">Stock</th>
               <th className="px-4 py-3 text-right">Acciones</th>
             </tr>

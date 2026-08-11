@@ -1,6 +1,8 @@
 import React from 'react';
+import { ShoppingCart } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { Order, OrderStatus, PaymentStatus } from '../../types';
+import { AdminModuleHeader } from './AdminModuleHeader';
 
 const paymentStyles: Record<PaymentStatus, string> = {
   pendiente: 'bg-yellow-100 text-yellow-800',
@@ -23,7 +25,11 @@ export function AdminOrders() {
 
   return (
     <div>
-      <h1 className="font-playfair text-3xl font-bold text-essence-navy mb-8">Pedidos y pagos</h1>
+      <AdminModuleHeader
+        title="Pedidos y pagos"
+        subtitle="Revisa pedidos, verifica pagos y actualiza su estado"
+        icon={ShoppingCart}
+      />
 
       <div className="flex space-x-2 mb-6">
         {(['todos', 'pendiente', 'verificado', 'rechazado'] as const).map(f => (
