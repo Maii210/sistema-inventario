@@ -1,25 +1,44 @@
 import React from 'react';
-import { LayoutDashboard, Package, DollarSign, ShoppingCart, Star, Users, ArrowLeft } from 'lucide-react';
+import {
+  LayoutDashboard, Package, DollarSign, ShoppingCart, Star, Users,
+  Truck, BarChart3, UserCog, ArrowLeft
+} from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { Capability, Role, can } from '../../data/permissions';
 
-export type AdminModule = 'dashboard' | 'perfumes' | 'pricing' | 'orders' | 'reviews' | 'customers';
+export type AdminModule =
+  | 'dashboard' | 'perfumes' | 'pricing' | 'orders' | 'reviews' | 'customers'
+  | 'suppliers' | 'reports' | 'users';
 
-const items: { id: AdminModule; label: string; icon: React.ElementType }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'perfumes', label: 'Perfumes', icon: Package },
-  { id: 'pricing', label: 'Precios y stock', icon: DollarSign },
-  { id: 'orders', label: 'Pedidos y pagos', icon: ShoppingCart },
-  { id: 'reviews', label: 'Reseñas', icon: Star },
-  { id: 'customers', label: 'Clientes', icon: Users }
+// Cada ítem requiere al menos una de estas capacidades para mostrarse.
+const items: { id: AdminModule; label: string; icon: React.ElementType; caps: Capability[] }[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, caps: ['viewDashboard'] },
+  { id: 'perfumes', label: 'Perfumes', icon: Package, caps: ['manageCatalog'] },
+  { id: 'pricing', label: 'Precios y stock', icon: DollarSign, caps: ['managePrices', 'manageStock'] },
+  { id: 'suppliers', label: 'Proveedores', icon: Truck, caps: ['manageSuppliers'] },
+  { id: 'orders', label: 'Pedidos y pagos', icon: ShoppingCart, caps: ['viewOrders'] },
+  { id: 'customers', label: 'Clientes', icon: Users, caps: ['viewCustomers'] },
+  { id: 'reviews', label: 'Reseñas', icon: Star, caps: ['manageReviews'] },
+  { id: 'reports', label: 'Reportes', icon: BarChart3, caps: ['viewReportsSales', 'viewReportsInventory', 'viewReportsCustomers'] },
+  { id: 'users', label: 'Usuarios', icon: UserCog, caps: ['manageUsers'] }
 ];
 
-export function AdminSidebar({ active, onSelect }: { active: AdminModule; onSelect: (m: AdminModule) => void }) {
+export function AdminSidebar({
+  role,
+  active,
+  onSelect
+}: {
+  role: Role;
+  active: AdminModule;
+  onSelect: (m: AdminModule) => void;
+}) {
   const { dispatch } = useApp();
+  const visible = items.filter(item => item.caps.some(c => can(role, c)));
   return (
     <aside className="w-64 bg-essence-navy text-white min-h-screen p-6 flex-shrink-0">
       <h2 className="font-playfair text-2xl font-bold mb-8">Essence Admin</h2>
       <nav className="space-y-2">
-        {items.map(item => (
+        {visible.map(item => (
           <button
             key={item.id}
             onClick={() => onSelect(item.id)}
