@@ -24,11 +24,13 @@ const inputCls =
 export function PerfumeForm({
   initial,
   suppliers,
+  canPrices,
   onSave,
   onCancel
 }: {
   initial?: Perfume;
   suppliers: { id: string; name: string }[];
+  canPrices: boolean;
   onSave: (p: Perfume) => void;
   onCancel: () => void;
 }) {
@@ -46,8 +48,8 @@ export function PerfumeForm({
     onSave({
       ...form,
       id: form.id || Date.now().toString(),
-      price: Number(form.price),
-      originalPrice: form.originalPrice ? Number(form.originalPrice) : undefined,
+      price: canPrices ? Number(form.price) : (initial?.price ?? 0),
+      originalPrice: canPrices ? (form.originalPrice ? Number(form.originalPrice) : undefined) : initial?.originalPrice,
       stock: Number(form.stock),
       rating: Number(form.rating)
     });
@@ -62,8 +64,23 @@ export function PerfumeForm({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <input className={inputCls} placeholder="Nombre" value={form.name} onChange={e => set('name', e.target.value)} required />
         <input className={inputCls} placeholder="Marca" value={form.brand} onChange={e => set('brand', e.target.value)} required />
-        <input className={inputCls} type="number" placeholder="Precio (BOB)" value={form.price} onChange={e => set('price', e.target.value)} required />
-        <input className={inputCls} type="number" placeholder="Precio original (opcional)" value={form.originalPrice ?? ''} onChange={e => set('originalPrice', e.target.value)} />
+        <input
+          className={`${inputCls} ${!canPrices ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+          type="number"
+          placeholder="Precio (BOB)"
+          value={form.price}
+          onChange={e => set('price', e.target.value)}
+          disabled={!canPrices}
+          required
+        />
+        <input
+          className={`${inputCls} ${!canPrices ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+          type="number"
+          placeholder="Precio original (opcional)"
+          value={form.originalPrice ?? ''}
+          onChange={e => set('originalPrice', e.target.value)}
+          disabled={!canPrices}
+        />
         <input className={inputCls} type="number" placeholder="Stock" value={form.stock} onChange={e => set('stock', e.target.value)} required />
         <input className={inputCls} placeholder="URL de imagen" value={form.image} onChange={e => set('image', e.target.value)} required />
       </div>
