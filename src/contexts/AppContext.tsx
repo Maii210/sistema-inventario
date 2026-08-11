@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { CartItem, Perfume, FilterOptions, User, Order, Review } from '../types';
+import { CartItem, Perfume, FilterOptions, User, Order, Review, Supplier, StaffUser } from '../types';
 import { perfumes as seedPerfumes } from '../data/perfumes';
 
 interface AppState {
@@ -13,6 +13,8 @@ interface AppState {
   currentView: 'home' | 'catalog' | 'product' | 'cart' | 'checkout' | 'quiz' | 'comparator' | 'guide' | 'login' | 'gift' | 'reviews' | 'admin';
   selectedPerfume: Perfume | null;
   isLoading: boolean;
+  suppliers: Supplier[];
+  staff: StaffUser[];
 }
 
 type AppAction =
@@ -33,12 +35,20 @@ type AppAction =
   | { type: 'UPDATE_ORDER'; payload: Order }
   | { type: 'ADD_USER'; payload: User }
   | { type: 'DELETE_REVIEW'; payload: { perfumeId: string; reviewId: string } }
-  | { type: 'UPDATE_REVIEW'; payload: { perfumeId: string; review: Review } };
+  | { type: 'UPDATE_REVIEW'; payload: { perfumeId: string; review: Review } }
+  | { type: 'ADD_SUPPLIER'; payload: Supplier }
+  | { type: 'UPDATE_SUPPLIER'; payload: Supplier }
+  | { type: 'DELETE_SUPPLIER'; payload: string }
+  | { type: 'ADD_STAFF'; payload: StaffUser }
+  | { type: 'UPDATE_STAFF'; payload: StaffUser }
+  | { type: 'DELETE_STAFF'; payload: string };
 
 const STORAGE_KEYS = {
   perfumes: 'essence_perfumes',
   orders: 'essence_orders',
-  users: 'essence_users'
+  users: 'essence_users',
+  suppliers: 'essence_suppliers',
+  staff: 'essence_staff'
 };
 
 function load<T>(key: string, fallback: T): T {
@@ -67,7 +77,9 @@ const initialState: AppState = {
   searchQuery: '',
   currentView: 'home',
   selectedPerfume: null,
-  isLoading: false
+  isLoading: false,
+  suppliers: load<Supplier[]>(STORAGE_KEYS.suppliers, []),
+  staff: load<StaffUser[]>(STORAGE_KEYS.staff, [])
 };
 
 const AppContext = createContext<{
@@ -155,6 +167,18 @@ function appReducer(state: AppState, action: AppAction): AppState {
             : p
         )
       };
+    case 'ADD_SUPPLIER':
+      return { ...state, suppliers: [action.payload, ...state.suppliers] };
+    case 'UPDATE_SUPPLIER':
+      return { ...state, suppliers: state.suppliers.map(s => (s.id === action.payload.id ? action.payload : s)) };
+    case 'DELETE_SUPPLIER':
+      return { ...state, suppliers: state.suppliers.filter(s => s.id !== action.payload) };
+    case 'ADD_STAFF':
+      return { ...state, staff: [...state.staff, action.payload] };
+    case 'UPDATE_STAFF':
+      return { ...state, staff: state.staff.map(u => (u.id === action.payload.id ? action.payload : u)) };
+    case 'DELETE_STAFF':
+      return { ...state, staff: state.staff.filter(u => u.id !== action.payload) };
     default:
       return state;
   }
@@ -174,6 +198,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(state.users));
   }, [state.users]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.suppliers, JSON.stringify(state.suppliers));
+  }, [state.suppliers]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.staff, JSON.stringify(state.staff));
+  }, [state.staff]);
 
   return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
 }
