@@ -35,6 +35,17 @@ export function Login() {
         dispatch({ type: 'SET_CURRENT_VIEW', payload: 'admin' });
         return;
       }
+      const staffMember = state.staff.find(
+        u => u.email === formData.email && u.password === formData.password && u.active
+      );
+      if (staffMember) {
+        dispatch({
+          type: 'SET_USER',
+          payload: { id: staffMember.id, name: staffMember.name, email: staffMember.email, role: staffMember.role }
+        });
+        dispatch({ type: 'SET_CURRENT_VIEW', payload: 'admin' });
+        return;
+      }
       const existing = state.users.find(u => u.email === formData.email);
       dispatch({
         type: 'SET_USER',
