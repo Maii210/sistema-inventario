@@ -1,6 +1,7 @@
 import React from 'react';
-import { Mail, Phone, ShoppingBag } from 'lucide-react';
+import { Mail, Phone, ShoppingBag, Users } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { AdminModuleHeader } from './AdminModuleHeader';
 
 export function AdminCustomers() {
   const { state } = useApp();
@@ -10,7 +11,11 @@ export function AdminCustomers() {
 
   return (
     <div>
-      <h1 className="font-playfair text-3xl font-bold text-essence-navy mb-8">Clientes</h1>
+      <AdminModuleHeader
+        title="Clientes"
+        subtitle="Consulta tus clientes registrados y su historial de compras"
+        icon={Users}
+      />
 
       {users.length === 0 ? (
         <p className="text-gray-500">Aún no hay clientes registrados.</p>
