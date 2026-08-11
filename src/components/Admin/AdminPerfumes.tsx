@@ -4,12 +4,14 @@ import { useApp } from '../../contexts/AppContext';
 import { Perfume } from '../../types';
 import { PerfumeForm } from './PerfumeForm';
 import { AdminModuleHeader } from './AdminModuleHeader';
+import { Role, can } from '../../data/permissions';
 
 export function AdminPerfumes() {
   const { state, dispatch } = useApp();
   const [editing, setEditing] = React.useState<Perfume | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [query, setQuery] = React.useState('');
+  const canPrices = can(state.user?.role as Role | undefined, 'managePrices');
 
   const list = state.perfumes.filter(
     p =>
@@ -29,6 +31,7 @@ export function AdminPerfumes() {
       <PerfumeForm
         initial={editing ?? undefined}
         suppliers={state.suppliers}
+        canPrices={canPrices}
         onSave={handleSave}
         onCancel={() => {
           setEditing(null);

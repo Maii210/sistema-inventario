@@ -2,9 +2,12 @@ import React from 'react';
 import { Save, DollarSign } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { AdminModuleHeader } from './AdminModuleHeader';
+import { Role, can } from '../../data/permissions';
 
 export function AdminPricing() {
   const { state, dispatch } = useApp();
+  const role = state.user?.role as Role | undefined;
+  const canPrices = can(role, 'managePrices');
   const [draft, setDraft] = React.useState<Record<string, { price: string; originalPrice: string; stock: string }>>({});
 
   const getVal = (id: string, field: 'price' | 'originalPrice' | 'stock', fallback: number | undefined) =>
@@ -29,8 +32,8 @@ export function AdminPricing() {
       type: 'UPDATE_PERFUME',
       payload: {
         ...perfume,
-        price: d?.price ? Number(d.price) : perfume.price,
-        originalPrice: d?.originalPrice ? Number(d.originalPrice) : perfume.originalPrice,
+        price: canPrices && d?.price ? Number(d.price) : perfume.price,
+        originalPrice: canPrices && d?.originalPrice ? Number(d.originalPrice) : perfume.originalPrice,
         stock: d?.stock ? Number(d.stock) : perfume.stock
       }
     });
@@ -66,10 +69,22 @@ export function AdminPricing() {
               <tr key={p.id}>
                 <td className="px-4 py-3 font-medium text-essence-navy">{p.name}</td>
                 <td className="px-4 py-3">
-                  <input className={cell} type="number" value={getVal(p.id, 'price', p.price)} onChange={e => setVal(p.id, 'price', e.target.value)} />
+                  <input
+                    className={`${cell} ${!canPrices ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+                    type="number"
+                    value={getVal(p.id, 'price', p.price)}
+                    onChange={e => setVal(p.id, 'price', e.target.value)}
+                    disabled={!canPrices}
+                  />
                 </td>
                 <td className="px-4 py-3">
-                  <input className={cell} type="number" value={getVal(p.id, 'originalPrice', p.originalPrice)} onChange={e => setVal(p.id, 'originalPrice', e.target.value)} />
+                  <input
+                    className={`${cell} ${!canPrices ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+                    type="number"
+                    value={getVal(p.id, 'originalPrice', p.originalPrice)}
+                    onChange={e => setVal(p.id, 'originalPrice', e.target.value)}
+                    disabled={!canPrices}
+                  />
                 </td>
                 <td className="px-4 py-3">
                   <input className={cell} type="number" value={getVal(p.id, 'stock', p.stock)} onChange={e => setVal(p.id, 'stock', e.target.value)} />
