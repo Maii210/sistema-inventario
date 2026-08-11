@@ -28,6 +28,7 @@ export function AdminPerfumes() {
     return (
       <PerfumeForm
         initial={editing ?? undefined}
+        suppliers={state.suppliers}
         onSave={handleSave}
         onCancel={() => {
           setEditing(null);
@@ -69,6 +70,7 @@ export function AdminPerfumes() {
               <th className="px-4 py-3">Marca</th>
               <th className="px-4 py-3">Precio de venta (BOB)</th>
               <th className="px-4 py-3">Stock</th>
+              <th className="px-4 py-3">Proveedor</th>
               <th className="px-4 py-3 text-right">Acciones</th>
             </tr>
           </thead>
@@ -82,6 +84,9 @@ export function AdminPerfumes() {
                 <td className="px-4 py-3 text-gray-600">{p.brand}</td>
                 <td className="px-4 py-3">{p.price} BOB</td>
                 <td className="px-4 py-3">{p.stock}</td>
+                <td className="px-4 py-3 text-gray-600">
+                  {state.suppliers.find(s => s.id === p.supplierId)?.name || '—'}
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end space-x-2">
                     <button onClick={() => setEditing(p)} className="p-2 text-essence-purple hover:bg-essence-purple/5 rounded-lg">
