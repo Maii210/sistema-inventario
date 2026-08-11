@@ -36,7 +36,7 @@ export function StaffForm({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <input className={inputCls} placeholder="Nombre" value={form.name} onChange={e => set('name', e.target.value)} required />
         <input className={inputCls} type="email" placeholder="Correo" value={form.email} onChange={e => set('email', e.target.value)} required />
-        <input className={inputCls} placeholder="Contraseña" value={form.password} onChange={e => set('password', e.target.value)} required />
+        <input className={inputCls} type="password" placeholder="Contraseña" value={form.password} onChange={e => set('password', e.target.value)} required />
         <select className={inputCls} value={form.role} onChange={e => set('role', e.target.value)}>
           {(Object.keys(ROLE_LABELS) as Role[]).map(r => (
             <option key={r} value={r}>{ROLE_LABELS[r]}</option>

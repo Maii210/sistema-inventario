@@ -2,6 +2,7 @@ import React from 'react';
 import { ShoppingBag, User, Heart, Menu, Sparkles, LogOut } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { SmartSearch } from './SmartSearch';
+import { isStaffRole } from '../../data/permissions';
 
 export function Header() {
   const { state, dispatch } = useApp();
@@ -113,7 +114,7 @@ export function Header() {
                       <button className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors">
                         Favoritos
                       </button>
-                      {state.user.role === 'admin' && (
+                      {isStaffRole(state.user.role) && (
                         <button
                           onClick={() => handleViewChange('admin')}
                           className="w-full text-left px-4 py-2 text-essence-purple hover:bg-essence-purple/5 transition-colors font-medium"
