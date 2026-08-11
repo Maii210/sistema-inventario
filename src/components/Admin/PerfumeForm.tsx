@@ -23,10 +23,12 @@ const inputCls =
 
 export function PerfumeForm({
   initial,
+  suppliers,
   onSave,
   onCancel
 }: {
   initial?: Perfume;
+  suppliers: { id: string; name: string }[];
   onSave: (p: Perfume) => void;
   onCancel: () => void;
 }) {
@@ -74,7 +76,7 @@ export function PerfumeForm({
         <input className={inputCls} placeholder="Notas de fondo (coma)" value={form.notes.base.join(', ')} onChange={e => setNotes('base', e.target.value)} />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <select className={inputCls} value={form.category} onChange={e => set('category', e.target.value)}>
           <option value="floral">Floral</option>
           <option value="oriental">Oriental</option>
@@ -95,6 +97,12 @@ export function PerfumeForm({
           <option value="suave">Suave</option>
           <option value="moderada">Moderada</option>
           <option value="intensa">Intensa</option>
+        </select>
+        <select className={inputCls} value={form.supplierId ?? ''} onChange={e => set('supplierId', e.target.value || undefined)}>
+          <option value="">Sin proveedor</option>
+          {suppliers.map(s => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
         </select>
       </div>
 
