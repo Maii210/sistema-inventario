@@ -19,6 +19,7 @@ export interface Perfume {
   reviews: Review[];
   isNew?: boolean;
   isPopular?: boolean;
+  supplierId?: string;
   stock: number;
 }
 
@@ -47,7 +48,7 @@ export interface User {
   email: string;
   phone?: string;
   address?: Address;
-  role?: 'admin' | 'customer';
+  role?: 'admin' | 'vendedora' | 'inventarista' | 'customer';
   createdAt?: string;
 }
 
@@ -115,4 +116,23 @@ export interface Order {
   paymentMethod: 'card' | 'qr' | 'transfer';
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
+}
+
+export interface StaffUser {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  role: 'admin' | 'vendedora' | 'inventarista';
+  active: boolean;
+  createdAt: string;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactName?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
 }
