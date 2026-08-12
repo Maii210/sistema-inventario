@@ -1,8 +1,10 @@
 import React from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, FileText } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { Order, OrderStatus, PaymentStatus } from '../../types';
 import { AdminModuleHeader } from './AdminModuleHeader';
+import { exportOrderInvoicePdf } from '../../utils/pdf';
+import { formatBOB } from '../../utils/format';
 
 const paymentStyles: Record<PaymentStatus, string> = {
   pendiente: 'bg-yellow-100 text-yellow-800',
@@ -15,6 +17,8 @@ const orderStatuses: OrderStatus[] = ['pendiente', 'pagado', 'enviado', 'entrega
 export function AdminOrders() {
   const { state, dispatch } = useApp();
   const [filter, setFilter] = React.useState<'todos' | PaymentStatus>('todos');
+  // Por pedido: si el comprobante debe incluir IVA (13%) o no.
+  const [ivaByOrder, setIvaByOrder] = React.useState<Record<string, boolean>>({});
 
   const orders = state.orders.filter(o => filter === 'todos' || o.paymentStatus === filter);
 
@@ -60,7 +64,7 @@ export function AdminOrders() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-bold text-essence-navy">{o.total} BOB</div>
+                  <div className="text-lg font-bold text-essence-navy">{formatBOB(o.total)}</div>
                   <span className={`inline-block mt-1 text-xs px-2 py-1 rounded-full ${paymentStyles[o.paymentStatus]}`}>
                     Pago: {o.paymentStatus}
                   </span>
@@ -71,7 +75,7 @@ export function AdminOrders() {
                 {o.items.map(it => (
                   <li key={it.perfumeId} className="flex justify-between py-1">
                     <span>{it.name} × {it.quantity}</span>
-                    <span>{it.price * it.quantity} BOB</span>
+                    <span>{formatBOB(it.price * it.quantity)}</span>
                   </li>
                 ))}
               </ul>
@@ -93,6 +97,24 @@ export function AdminOrders() {
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-gray-100">
+                <label className="flex items-center space-x-2 text-sm text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!ivaByOrder[o.id]}
+                    onChange={e => setIvaByOrder(prev => ({ ...prev, [o.id]: e.target.checked }))}
+                  />
+                  <span>Habilitar IVA (13%) en el comprobante</span>
+                </label>
+                <button
+                  onClick={() => exportOrderInvoicePdf(o, { includeIva: !!ivaByOrder[o.id] })}
+                  className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-essence-purple text-white text-sm font-medium hover:bg-essence-plum"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Generar comprobante (PDF)</span>
+                </button>
               </div>
             </div>
           ))}

@@ -5,6 +5,7 @@ import { Perfume } from '../../types';
 import { PerfumeForm } from './PerfumeForm';
 import { AdminModuleHeader } from './AdminModuleHeader';
 import { Role, can } from '../../data/permissions';
+import { formatBOB } from '../../utils/format';
 
 export function AdminPerfumes() {
   const { state, dispatch } = useApp();
@@ -71,8 +72,10 @@ export function AdminPerfumes() {
             <tr>
               <th className="px-4 py-3">Perfume</th>
               <th className="px-4 py-3">Marca</th>
+              <th className="px-4 py-3">Precio de compra (BOB)</th>
               <th className="px-4 py-3">Precio de venta (BOB)</th>
-              <th className="px-4 py-3">Stock</th>
+              <th className="px-4 py-3">Margen por unidad (BOB)</th>
+              <th className="px-4 py-3">Unidades en stock</th>
               <th className="px-4 py-3">Proveedor</th>
               <th className="px-4 py-3 text-right">Acciones</th>
             </tr>
@@ -85,7 +88,17 @@ export function AdminPerfumes() {
                   <span className="font-medium text-essence-navy">{p.name}</span>
                 </td>
                 <td className="px-4 py-3 text-gray-600">{p.brand}</td>
-                <td className="px-4 py-3">{p.price} BOB</td>
+                <td className="px-4 py-3">{p.purchasePrice != null ? formatBOB(p.purchasePrice) : '—'}</td>
+                <td className="px-4 py-3">{formatBOB(p.price)}</td>
+                <td className="px-4 py-3">
+                  {p.purchasePrice != null ? (
+                    <span className={p.price - p.purchasePrice >= 0 ? 'text-green-700' : 'text-red-600'}>
+                      {formatBOB(p.price - p.purchasePrice)}
+                    </span>
+                  ) : (
+                    '—'
+                  )}
+                </td>
                 <td className="px-4 py-3">{p.stock}</td>
                 <td className="px-4 py-3 text-gray-600">
                   {state.suppliers.find(s => s.id === p.supplierId)?.name || '—'}

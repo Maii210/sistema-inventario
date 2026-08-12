@@ -3,6 +3,7 @@ import { LayoutDashboard, Package, DollarSign, AlertTriangle, ShoppingCart, Star
 import { useApp } from '../../contexts/AppContext';
 import { LOW_STOCK_THRESHOLD } from '../../data/adminConfig';
 import { AdminModuleHeader } from './AdminModuleHeader';
+import { formatBOB } from '../../utils/format';
 
 export function AdminDashboard() {
   const { state } = useApp();
@@ -18,10 +19,10 @@ export function AdminDashboard() {
 
   const cards = [
     { label: 'Perfumes', value: perfumes.length, icon: Package },
-    { label: 'Valor de inventario', value: `${inventoryValue} BOB`, icon: DollarSign },
+    { label: 'Valor de inventario', value: formatBOB(inventoryValue), icon: DollarSign },
     { label: 'Stock bajo', value: lowStock.length, icon: AlertTriangle },
     { label: 'Pagos pendientes', value: pendingPayments, icon: ShoppingCart },
-    { label: 'Ingresos verificados', value: `${revenue} BOB`, icon: TrendingUp },
+    { label: 'Ingresos verificados', value: formatBOB(revenue), icon: TrendingUp },
     { label: 'Reseñas', value: totalReviews, icon: Star }
   ];
 

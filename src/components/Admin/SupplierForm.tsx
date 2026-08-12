@@ -6,6 +6,16 @@ const empty: Supplier = { id: '', name: '', contactName: '', phone: '', email: '
 const inputCls =
   'w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-essence-purple/20 focus:border-essence-purple';
 
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="block text-sm font-medium text-essence-navy mb-1">{label}</span>
+      {children}
+      {hint && <span className="block text-xs text-gray-400 mt-1">{hint}</span>}
+    </label>
+  );
+}
+
 export function SupplierForm({
   initial,
   onSave,
@@ -29,12 +39,22 @@ export function SupplierForm({
         {initial ? 'Editar proveedor' : 'Nuevo proveedor'}
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <input className={inputCls} placeholder="Nombre del proveedor" value={form.name} onChange={e => set('name', e.target.value)} required />
-        <input className={inputCls} placeholder="Persona de contacto" value={form.contactName ?? ''} onChange={e => set('contactName', e.target.value)} />
-        <input className={inputCls} placeholder="Teléfono" value={form.phone ?? ''} onChange={e => set('phone', e.target.value)} />
-        <input className={inputCls} type="email" placeholder="Email" value={form.email ?? ''} onChange={e => set('email', e.target.value)} />
+        <Field label="Nombre del proveedor" hint="Empresa o distribuidor">
+          <input className={inputCls} placeholder="Ej: Aromas del Sur S.R.L." value={form.name} onChange={e => set('name', e.target.value)} required />
+        </Field>
+        <Field label="Persona de contacto" hint="Opcional: con quién tratas">
+          <input className={inputCls} placeholder="Ej: Juan Pérez" value={form.contactName ?? ''} onChange={e => set('contactName', e.target.value)} />
+        </Field>
+        <Field label="Teléfono / celular" hint="Opcional">
+          <input className={inputCls} placeholder="Ej: 70000000" value={form.phone ?? ''} onChange={e => set('phone', e.target.value)} />
+        </Field>
+        <Field label="Correo electrónico" hint="Opcional">
+          <input className={inputCls} type="email" placeholder="proveedor@correo.com" value={form.email ?? ''} onChange={e => set('email', e.target.value)} />
+        </Field>
       </div>
-      <textarea className={inputCls} placeholder="Notas" rows={3} value={form.notes ?? ''} onChange={e => set('notes', e.target.value)} />
+      <Field label="Notas" hint="Opcional: condiciones, tiempos de entrega, observaciones">
+        <textarea className={inputCls} placeholder="Escribe cualquier detalle importante del proveedor" rows={3} value={form.notes ?? ''} onChange={e => set('notes', e.target.value)} />
+      </Field>
       <div className="flex space-x-4 pt-2">
         <button type="button" onClick={onCancel} className="flex-1 border border-essence-purple text-essence-purple py-3 rounded-lg font-semibold hover:bg-essence-purple/5">
           Cancelar

@@ -1,20 +1,19 @@
 import React from 'react';
 import {
-  LayoutDashboard, Package, DollarSign, ShoppingCart, Star, Users,
+  LayoutDashboard, Package, ShoppingCart, Star, Users,
   Truck, BarChart3, UserCog, ArrowLeft
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { Capability, Role, can } from '../../data/permissions';
 
 export type AdminModule =
-  | 'dashboard' | 'perfumes' | 'pricing' | 'orders' | 'reviews' | 'customers'
+  | 'dashboard' | 'perfumes' | 'orders' | 'reviews' | 'customers'
   | 'suppliers' | 'reports' | 'users';
 
 // Cada ítem requiere al menos una de estas capacidades para mostrarse.
 const items: { id: AdminModule; label: string; icon: React.ElementType; caps: Capability[] }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, caps: ['viewDashboard'] },
   { id: 'perfumes', label: 'Perfumes', icon: Package, caps: ['manageCatalog'] },
-  { id: 'pricing', label: 'Precios y stock', icon: DollarSign, caps: ['managePrices', 'manageStock'] },
   { id: 'suppliers', label: 'Proveedores', icon: Truck, caps: ['manageSuppliers'] },
   { id: 'orders', label: 'Pedidos y pagos', icon: ShoppingCart, caps: ['viewOrders'] },
   { id: 'customers', label: 'Clientes', icon: Users, caps: ['viewCustomers'] },
