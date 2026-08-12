@@ -27,8 +27,8 @@ export const ROLE_CAPABILITIES: Record<Role, Capability[]> = {
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
-  admin: 'Administradora',
-  vendedora: 'Vendedora',
+  admin: 'Administrador/a',
+  vendedora: 'Vendedor/a',
   inventarista: 'Inventarista'
 };
 
