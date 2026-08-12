@@ -98,7 +98,7 @@ export function PerfumeForm({
           <input className={inputCls} placeholder="Ej: Essence Collection" value={form.brand} onChange={e => set('brand', e.target.value)} required />
         </Field>
 
-        <Field label="Precio de compra (BOB)" hint={canPrices ? 'Cuánto te cuesta a ti el producto' : 'Solo la administradora puede editar precios'}>
+        <Field label="Precio de compra (BOB)" hint={canPrices ? 'Cuánto te cuesta a ti el producto' : 'Solo el administrador/a puede editar precios'}>
           <input
             className={priceInputCls}
             type="number"
@@ -110,7 +110,7 @@ export function PerfumeForm({
             disabled={!canPrices}
           />
         </Field>
-        <Field label="Precio de venta (BOB)" hint={canPrices ? 'Precio al que lo vendes al cliente' : 'Solo la administradora puede editar precios'}>
+        <Field label="Precio de venta (BOB)" hint={canPrices ? 'Precio al que lo vendes al cliente' : 'Solo el administrador/a puede editar precios'}>
           <input
             className={priceInputCls}
             type="number"
