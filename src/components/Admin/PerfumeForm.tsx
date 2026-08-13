@@ -1,6 +1,14 @@
 import React from 'react';
 import { Perfume } from '../../types';
 import { formatBOB } from '../../utils/format';
+import { NoteSelector } from './NoteSelector';
+
+// Notas más conocidas, sugeridas por capa de la pirámide olfativa.
+const NOTE_SUGGESTIONS = {
+  top: ['Bergamota', 'Limón', 'Naranja', 'Mandarina', 'Pomelo', 'Pimienta rosa', 'Cardamomo', 'Menta', 'Lavanda', 'Manzana', 'Jengibre'],
+  middle: ['Rosa', 'Jazmín', 'Violeta', 'Ylang-ylang', 'Peonía', 'Geranio', 'Lirio', 'Canela', 'Clavo', 'Nuez moscada', 'Durazno', 'Frutos rojos'],
+  base: ['Vainilla', 'Sándalo', 'Cedro', 'Vetiver', 'Pachulí', 'Ámbar', 'Almizcle', 'Oud', 'Haba tonka', 'Incienso', 'Cuero', 'Caramelo']
+};
 
 const empty: Perfume = {
   id: '',
@@ -58,10 +66,10 @@ export function PerfumeForm({
   const [form, setForm] = React.useState<Perfume>(initial ?? empty);
 
   const set = (field: keyof Perfume, value: unknown) => setForm(prev => ({ ...prev, [field]: value }));
-  const setNotes = (key: 'top' | 'middle' | 'base', value: string) =>
+  const setNotes = (key: 'top' | 'middle' | 'base', next: string[]) =>
     setForm(prev => ({
       ...prev,
-      notes: { ...prev.notes, [key]: value.split(',').map(s => s.trim()).filter(Boolean) }
+      notes: { ...prev.notes, [key]: next }
     }));
 
   // Margen estimado = precio de venta - precio de compra.
@@ -166,16 +174,28 @@ export function PerfumeForm({
         <textarea className={inputCls} placeholder="Describe el aroma, ocasión de uso, etc." rows={3} value={form.description} onChange={e => set('description', e.target.value)} required />
       </Field>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Field label="Notas de salida" hint="Separadas por coma">
-          <input className={inputCls} placeholder="Bergamota, Cardamomo" value={form.notes.top.join(', ')} onChange={e => setNotes('top', e.target.value)} />
-        </Field>
-        <Field label="Notas de corazón" hint="Separadas por coma">
-          <input className={inputCls} placeholder="Rosa, Jazmín" value={form.notes.middle.join(', ')} onChange={e => setNotes('middle', e.target.value)} />
-        </Field>
-        <Field label="Notas de fondo" hint="Separadas por coma">
-          <input className={inputCls} placeholder="Oud, Vainilla" value={form.notes.base.join(', ')} onChange={e => setNotes('base', e.target.value)} />
-        </Field>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <NoteSelector
+          label="Notas de salida"
+          hint="Primer aroma que se percibe (cítricos y frescos)"
+          values={form.notes.top}
+          suggestions={NOTE_SUGGESTIONS.top}
+          onChange={next => setNotes('top', next)}
+        />
+        <NoteSelector
+          label="Notas de corazón"
+          hint="El cuerpo de la fragancia (florales y especiados)"
+          values={form.notes.middle}
+          suggestions={NOTE_SUGGESTIONS.middle}
+          onChange={next => setNotes('middle', next)}
+        />
+        <NoteSelector
+          label="Notas de fondo"
+          hint="Lo que perdura al final (amaderados y dulces)"
+          values={form.notes.base}
+          suggestions={NOTE_SUGGESTIONS.base}
+          onChange={next => setNotes('base', next)}
+        />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
