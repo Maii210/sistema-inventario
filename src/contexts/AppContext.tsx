@@ -32,6 +32,7 @@ type AppAction =
   | { type: 'UPDATE_PERFUME'; payload: Perfume }
   | { type: 'DELETE_PERFUME'; payload: string }
   | { type: 'ADD_ORDER'; payload: Order }
+  | { type: 'REGISTER_SALE'; payload: { order: Order } }
   | { type: 'UPDATE_ORDER'; payload: Order }
   | { type: 'ADD_USER'; payload: User }
   | { type: 'DELETE_REVIEW'; payload: { perfumeId: string; reviewId: string } }
@@ -137,6 +138,19 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, perfumes: state.perfumes.filter(p => p.id !== action.payload) };
     case 'ADD_ORDER':
       return { ...state, orders: [action.payload, ...state.orders] };
+    case 'REGISTER_SALE': {
+      // Venta en tienda: registra el pedido y descuenta el stock vendido.
+      const { order } = action.payload;
+      const soldQty: Record<string, number> = {};
+      order.items.forEach(it => { soldQty[it.perfumeId] = (soldQty[it.perfumeId] ?? 0) + it.quantity; });
+      return {
+        ...state,
+        orders: [order, ...state.orders],
+        perfumes: state.perfumes.map(p =>
+          soldQty[p.id] ? { ...p, stock: Math.max(0, p.stock - soldQty[p.id]) } : p
+        )
+      };
+    }
     case 'UPDATE_ORDER':
       return {
         ...state,

@@ -114,7 +114,7 @@ export interface Order {
   subtotal: number;
   shipping: number;
   total: number;
-  paymentMethod: 'card' | 'qr' | 'transfer';
+  paymentMethod: 'card' | 'qr' | 'transfer' | 'efectivo';
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
 }
