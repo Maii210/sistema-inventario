@@ -12,17 +12,18 @@ export type Capability =
   | 'viewReportsSales'
   | 'viewReportsInventory'
   | 'viewReportsCustomers'
-  | 'manageUsers';
+  | 'manageUsers'
+  | 'registerSales';
 
 const ALL: Capability[] = [
   'viewDashboard', 'manageCatalog', 'managePrices', 'manageStock', 'manageSuppliers',
   'viewOrders', 'viewCustomers', 'manageReviews',
-  'viewReportsSales', 'viewReportsInventory', 'viewReportsCustomers', 'manageUsers'
+  'viewReportsSales', 'viewReportsInventory', 'viewReportsCustomers', 'manageUsers', 'registerSales'
 ];
 
 export const ROLE_CAPABILITIES: Record<Role, Capability[]> = {
   admin: ALL,
-  vendedora: ['viewDashboard', 'viewOrders', 'viewCustomers', 'manageReviews', 'viewReportsSales', 'viewReportsCustomers'],
+  vendedora: ['viewDashboard', 'registerSales', 'viewOrders', 'viewCustomers', 'manageReviews', 'viewReportsSales', 'viewReportsCustomers'],
   inventarista: ['viewDashboard', 'manageCatalog', 'manageStock', 'manageSuppliers', 'viewReportsInventory']
 };
 

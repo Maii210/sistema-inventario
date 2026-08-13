@@ -3,6 +3,7 @@ import { useApp } from '../../contexts/AppContext';
 import { AdminSidebar, AdminModule } from './AdminSidebar';
 import { Role, isStaffRole } from '../../data/permissions';
 import { AdminDashboard } from './AdminDashboard';
+import { AdminPos } from './AdminPos';
 import { AdminPerfumes } from './AdminPerfumes';
 import { AdminSuppliers } from './AdminSuppliers';
 import { AdminOrders } from './AdminOrders';
@@ -27,6 +28,7 @@ export function AdminPanel() {
   const render = () => {
     switch (module) {
       case 'dashboard': return <AdminDashboard />;
+      case 'pos': return <AdminPos />;
       case 'perfumes': return <AdminPerfumes />;
       case 'suppliers': return <AdminSuppliers />;
       case 'orders': return <AdminOrders />;
