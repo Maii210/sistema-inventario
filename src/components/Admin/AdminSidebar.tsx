@@ -34,7 +34,7 @@ export function AdminSidebar({
   const { dispatch } = useApp();
   const visible = items.filter(item => item.caps.some(c => can(role, c)));
   return (
-    <aside className="w-64 bg-essence-navy text-white min-h-screen p-6 flex-shrink-0">
+    <aside className="w-64 bg-essence-navy text-white h-screen p-6 flex-shrink-0 sticky top-0 self-start overflow-y-auto">
       <h2 className="font-playfair text-2xl font-bold mb-8">Essence Admin</h2>
       <nav className="space-y-2">
         {visible.map(item => (
