@@ -64,14 +64,16 @@ function AppContent() {
     }
   };
 
+  const isAdminView = state.currentView === 'admin';
+
   return (
     <div className="min-h-screen bg-white font-inter">
-      <Header />
+      {!isAdminView && <Header />}
       <main>
         {renderCurrentView()}
       </main>
       {!['quiz', 'comparator', 'guide', 'login', 'gift', 'reviews', 'admin'].includes(state.currentView) && <Footer />}
-      <Chatbot />
+      {!isAdminView && <Chatbot />}
     </div>
   );
 }

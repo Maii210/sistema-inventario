@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { CartItem, Perfume, FilterOptions, User, Order, Review, Supplier, StaffUser } from '../types';
 import { perfumes as seedPerfumes } from '../data/perfumes';
+import { DIRECT_ADMIN } from '../data/appConfig';
+import { ADMIN_CREDENTIALS } from '../data/adminConfig';
 
 interface AppState {
   cart: CartItem[];
@@ -70,13 +72,16 @@ function load<T>(key: string, fallback: T): T {
 
 const initialState: AppState = {
   cart: [],
-  user: null,
+  // En modo directo (deploy), arranca con sesión de administrador ya iniciada.
+  user: DIRECT_ADMIN
+    ? { id: 'admin', name: 'Administrador/a', email: ADMIN_CREDENTIALS.email, role: 'admin' }
+    : null,
   users: load<User[]>(STORAGE_KEYS.users, []),
   perfumes: load<Perfume[]>(STORAGE_KEYS.perfumes, seedPerfumes),
   orders: load<Order[]>(STORAGE_KEYS.orders, []),
   filters: {},
   searchQuery: '',
-  currentView: 'home',
+  currentView: DIRECT_ADMIN ? 'admin' : 'home',
   selectedPerfume: null,
   isLoading: false,
   suppliers: load<Supplier[]>(STORAGE_KEYS.suppliers, []),

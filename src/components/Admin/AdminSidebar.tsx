@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { Capability, Role, can } from '../../data/permissions';
+import { DIRECT_ADMIN } from '../../data/appConfig';
 
 export type AdminModule =
   | 'dashboard' | 'pos' | 'perfumes' | 'orders' | 'reviews' | 'customers'
@@ -51,13 +52,15 @@ export function AdminSidebar({
           </button>
         ))}
       </nav>
-      <button
-        onClick={() => dispatch({ type: 'SET_CURRENT_VIEW', payload: 'home' })}
-        className="mt-8 flex items-center space-x-2 text-essence-light hover:text-white transition-colors"
-      >
-        <ArrowLeft className="h-5 w-5" />
-        <span>Volver a la tienda</span>
-      </button>
+      {!DIRECT_ADMIN && (
+        <button
+          onClick={() => dispatch({ type: 'SET_CURRENT_VIEW', payload: 'home' })}
+          className="mt-8 flex items-center space-x-2 text-essence-light hover:text-white transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          <span>Volver a la tienda</span>
+        </button>
+      )}
     </aside>
   );
 }
