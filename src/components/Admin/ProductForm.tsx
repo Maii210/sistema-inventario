@@ -75,8 +75,8 @@ export function ProductForm({
           <input className={inputCls} placeholder="Ej: Norma" value={form.brand ?? ''} onChange={e => set('brand', e.target.value)} />
         </Field>
 
-        <Field label="Categoría" hint="Opcional: ej. Abarrotes, Limpieza, Papelería">
-          <input className={inputCls} placeholder="Ej: Papelería" value={form.category ?? ''} onChange={e => set('category', e.target.value)} />
+        <Field label="Categoría" hint="Opcional: ej. Perfumería, Cuidado personal, Cosméticos">
+          <input className={inputCls} placeholder="Ej: Cuidado personal" value={form.category ?? ''} onChange={e => set('category', e.target.value)} />
         </Field>
         <Field label="Código de barras" hint="Opcional (podrá leerse con lector más adelante)">
           <input className={inputCls} placeholder="Ej: 7501234567890" value={form.barcode ?? ''} onChange={e => set('barcode', e.target.value)} />
