@@ -46,7 +46,7 @@ export function AdminUsers() {
       </div>
 
       {state.staff.length === 0 ? (
-        <p className="text-gray-500">Aún no hay usuarios de personal. La administradora principal ya tiene acceso.</p>
+        <p className="text-gray-500">Aún no hay usuarios de personal. El administrador principal ya tiene acceso.</p>
       ) : (
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <table className="w-full text-left">

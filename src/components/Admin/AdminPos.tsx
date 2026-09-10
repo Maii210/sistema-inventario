@@ -1,14 +1,14 @@
 import React from 'react';
-import { Zap, Plus, Minus, Trash2, Search, Check } from 'lucide-react';
+import { Zap, Plus, Minus, Trash2, Search, Check, Package } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-import { Order } from '../../types';
+import { Order, PaymentMethod } from '../../types';
 import { AdminModuleHeader } from './AdminModuleHeader';
 import { formatBOB } from '../../utils/format';
 import { exportOrderInvoicePdf } from '../../utils/pdf';
 
-type Line = { perfumeId: string; name: string; price: number; quantity: number };
+type Line = { productId: string; name: string; price: number; quantity: number };
 
-const paymentOptions: { id: Order['paymentMethod']; label: string }[] = [
+const paymentOptions: { id: PaymentMethod; label: string }[] = [
   { id: 'efectivo', label: 'Efectivo' },
   { id: 'qr', label: 'QR' },
   { id: 'transfer', label: 'Transferencia' },
@@ -20,28 +20,32 @@ export function AdminPos() {
   const [query, setQuery] = React.useState('');
   const [lines, setLines] = React.useState<Line[]>([]);
   const [customerId, setCustomerId] = React.useState('');
-  const [paymentMethod, setPaymentMethod] = React.useState<Order['paymentMethod']>('efectivo');
+  const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>('efectivo');
   const [includeIva, setIncludeIva] = React.useState(false);
   const [feedback, setFeedback] = React.useState<string | null>(null);
 
-  const catalog = state.perfumes.filter(
-    p => p.name.toLowerCase().includes(query.toLowerCase()) || p.brand.toLowerCase().includes(query.toLowerCase())
+  const catalog = state.products.filter(
+    p =>
+      p.name.toLowerCase().includes(query.toLowerCase()) ||
+      (p.brand ?? '').toLowerCase().includes(query.toLowerCase()) ||
+      (p.category ?? '').toLowerCase().includes(query.toLowerCase()) ||
+      (p.barcode ?? '').includes(query.trim())
   );
 
-  const qtyInTicket = (id: string) => lines.find(l => l.perfumeId === id)?.quantity ?? 0;
+  const qtyInTicket = (id: string) => lines.find(l => l.productId === id)?.quantity ?? 0;
   const remaining = (id: string) => {
-    const p = state.perfumes.find(x => x.id === id);
+    const p = state.products.find(x => x.id === id);
     return (p?.stock ?? 0) - qtyInTicket(id);
   };
 
   const addLine = (id: string) => {
-    const p = state.perfumes.find(x => x.id === id);
+    const p = state.products.find(x => x.id === id);
     if (!p || remaining(id) <= 0) return;
     setFeedback(null);
     setLines(prev => {
-      const found = prev.find(l => l.perfumeId === id);
-      if (found) return prev.map(l => (l.perfumeId === id ? { ...l, quantity: l.quantity + 1 } : l));
-      return [...prev, { perfumeId: id, name: p.name, price: p.price, quantity: 1 }];
+      const found = prev.find(l => l.productId === id);
+      if (found) return prev.map(l => (l.productId === id ? { ...l, quantity: l.quantity + 1 } : l));
+      return [...prev, { productId: id, name: p.name, price: p.price, quantity: 1 }];
     });
   };
 
@@ -49,8 +53,8 @@ export function AdminPos() {
     setLines(prev =>
       prev
         .map(l => {
-          if (l.perfumeId !== id) return l;
-          const p = state.perfumes.find(x => x.id === id);
+          if (l.productId !== id) return l;
+          const p = state.products.find(x => x.id === id);
           const max = p?.stock ?? 0;
           const next = Math.min(Math.max(1, l.quantity + delta), max);
           return { ...l, quantity: next };
@@ -59,7 +63,7 @@ export function AdminPos() {
     );
   };
 
-  const removeLine = (id: string) => setLines(prev => prev.filter(l => l.perfumeId !== id));
+  const removeLine = (id: string) => setLines(prev => prev.filter(l => l.productId !== id));
 
   const subtotal = lines.reduce((sum, l) => sum + l.price * l.quantity, 0);
   const total = subtotal;
@@ -76,13 +80,10 @@ export function AdminPos() {
         email: customer?.email || '',
         phone: customer?.phone || ''
       },
-      items: lines.map(l => ({ perfumeId: l.perfumeId, name: l.name, price: l.price, quantity: l.quantity })),
+      items: lines.map(l => ({ productId: l.productId, name: l.name, price: l.price, quantity: l.quantity })),
       subtotal,
-      shipping: 0,
       total,
-      paymentMethod,
-      paymentStatus: 'verificado',
-      orderStatus: 'entregado'
+      paymentMethod
     };
     dispatch({ type: 'REGISTER_SALE', payload: { order } });
     exportOrderInvoicePdf(order, { includeIva });
@@ -116,7 +117,7 @@ export function AdminPos() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               className="w-full border border-gray-200 rounded-lg pl-9 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-essence-purple/20"
-              placeholder="Buscar perfume por nombre o marca..."
+              placeholder="Buscar por nombre, categoría o código de barras..."
               value={query}
               onChange={e => setQuery(e.target.value)}
             />
@@ -126,7 +127,13 @@ export function AdminPos() {
               const rem = remaining(p.id);
               return (
                 <div key={p.id} className="flex items-center gap-3 py-2">
-                  <img src={p.image} alt={p.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                  <div className="w-10 h-10 rounded-lg bg-essence-navy/5 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {p.image ? (
+                      <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Package className="h-5 w-5 text-essence-navy/40" />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-essence-navy truncate">{p.name}</div>
                     <div className="text-xs text-gray-500">{formatBOB(p.price)} · Disponible: {rem}</div>
@@ -154,18 +161,18 @@ export function AdminPos() {
           ) : (
             <div className="divide-y divide-gray-100 mb-4">
               {lines.map(l => (
-                <div key={l.perfumeId} className="flex items-center gap-3 py-2">
+                <div key={l.productId} className="flex items-center gap-3 py-2">
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-essence-navy truncate">{l.name}</div>
                     <div className="text-xs text-gray-500">{formatBOB(l.price)} c/u</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => changeQty(l.perfumeId, -1)} className="p-1 rounded border border-gray-200 hover:bg-gray-50"><Minus className="h-4 w-4" /></button>
+                    <button onClick={() => changeQty(l.productId, -1)} className="p-1 rounded border border-gray-200 hover:bg-gray-50"><Minus className="h-4 w-4" /></button>
                     <span className="w-8 text-center">{l.quantity}</span>
-                    <button onClick={() => changeQty(l.perfumeId, 1)} className="p-1 rounded border border-gray-200 hover:bg-gray-50"><Plus className="h-4 w-4" /></button>
+                    <button onClick={() => changeQty(l.productId, 1)} className="p-1 rounded border border-gray-200 hover:bg-gray-50"><Plus className="h-4 w-4" /></button>
                   </div>
                   <div className="w-24 text-right font-medium">{formatBOB(l.price * l.quantity)}</div>
-                  <button onClick={() => removeLine(l.perfumeId)} className="p-1 text-red-600 hover:bg-red-50 rounded"><Trash2 className="h-4 w-4" /></button>
+                  <button onClick={() => removeLine(l.productId)} className="p-1 text-red-600 hover:bg-red-50 rounded"><Trash2 className="h-4 w-4" /></button>
                 </div>
               ))}
             </div>

@@ -5,7 +5,7 @@ import { Order } from '../types';
 
 type WithAutoTable = jsPDF & { lastAutoTable?: { finalY: number } };
 
-const BRAND = 'Essence Perfumería';
+const BRAND = 'Comercial Camila';
 const PURPLE: [number, number, number] = [124, 58, 173];
 
 // Exporta una tabla genérica a PDF (usado por los reportes).
@@ -93,8 +93,7 @@ export function exportOrderInvoicePdf(order: Order, opts: { includeIva: boolean;
   // sobre el total (IVA incluido, 13%), como es habitual en Bolivia.
   const total = order.total;
   const totals: [string, string][] = [
-    ['Subtotal productos', formatBOB(order.subtotal)],
-    ['Envío', order.shipping === 0 ? 'Gratis' : formatBOB(order.shipping)]
+    ['Subtotal productos', formatBOB(order.subtotal)]
   ];
   if (opts.includeIva) {
     const iva = total - total / (1 + rate);
@@ -113,7 +112,7 @@ export function exportOrderInvoicePdf(order: Order, opts: { includeIva: boolean;
 
   doc.setFontSize(8);
   doc.setTextColor(120);
-  doc.text('Gracias por su compra — Essence Perfumería', 14, 285);
+  doc.text('Gracias por su compra — Comercial Camila', 14, 285);
 
   doc.save(`comprobante-${order.id}.pdf`);
 }
