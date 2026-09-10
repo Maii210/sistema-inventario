@@ -36,6 +36,11 @@ const STORAGE_KEYS = {
   staff: 'camila_staff'
 };
 
+// Versión del catálogo de ejemplo. Súbela cada vez que cambies el seed de
+// productos: al cargar, si la versión guardada no coincide, se reemplaza el
+// catálogo del navegador por el nuevo (útil durante la fase de pruebas/deploy).
+const SEED_VERSION = '3';
+
 function load<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
@@ -50,11 +55,25 @@ function load<T>(key: string, fallback: T): T {
   }
 }
 
+// Carga los productos, refrescándolos con el seed nuevo cuando cambia SEED_VERSION.
+function loadProducts(): Product[] {
+  try {
+    if (localStorage.getItem('camila_seed_version') !== SEED_VERSION) {
+      localStorage.setItem('camila_seed_version', SEED_VERSION);
+      localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(seedProducts));
+      return seedProducts;
+    }
+  } catch {
+    /* ignorar: sin localStorage se usa el seed */
+  }
+  return load<Product[]>(STORAGE_KEYS.products, seedProducts);
+}
+
 const initialState: AppState = {
   // Sistema exclusivamente administrativo: arranca con sesión de administrador.
   user: { id: 'admin', name: 'Administrador/a', email: ADMIN_CREDENTIALS.email, role: 'admin' },
   users: load<User[]>(STORAGE_KEYS.users, []),
-  products: load<Product[]>(STORAGE_KEYS.products, seedProducts),
+  products: loadProducts(),
   orders: load<Order[]>(STORAGE_KEYS.orders, []),
   suppliers: load<Supplier[]>(STORAGE_KEYS.suppliers, []),
   staff: load<StaffUser[]>(STORAGE_KEYS.staff, []),
