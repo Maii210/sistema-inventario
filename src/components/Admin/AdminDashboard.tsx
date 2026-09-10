@@ -1,5 +1,4 @@
-import React from 'react';
-import { LayoutDashboard, Package, DollarSign, AlertTriangle, ShoppingCart, Star, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Package, DollarSign, AlertTriangle, ShoppingCart, TrendingUp } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { LOW_STOCK_THRESHOLD } from '../../data/adminConfig';
 import { AdminModuleHeader } from './AdminModuleHeader';
@@ -7,30 +6,26 @@ import { formatBOB } from '../../utils/format';
 
 export function AdminDashboard() {
   const { state } = useApp();
-  const { perfumes, orders } = state;
+  const { products, orders } = state;
 
-  const inventoryValue = perfumes.reduce((sum, p) => sum + p.price * p.stock, 0);
-  const lowStock = perfumes.filter(p => p.stock < LOW_STOCK_THRESHOLD);
-  const pendingPayments = orders.filter(o => o.paymentStatus === 'pendiente').length;
-  const revenue = orders
-    .filter(o => o.paymentStatus === 'verificado')
-    .reduce((sum, o) => sum + o.total, 0);
-  const totalReviews = perfumes.reduce((sum, p) => sum + p.reviews.length, 0);
+  const inventoryValue = products.reduce((sum, p) => sum + p.price * p.stock, 0);
+  const lowStock = products.filter(p => p.stock < LOW_STOCK_THRESHOLD);
+  const salesCount = orders.length;
+  const revenue = orders.reduce((sum, o) => sum + o.total, 0);
 
   const cards = [
-    { label: 'Perfumes', value: perfumes.length, icon: Package },
+    { label: 'Productos', value: products.length, icon: Package },
     { label: 'Valor de inventario', value: formatBOB(inventoryValue), icon: DollarSign },
     { label: 'Stock bajo', value: lowStock.length, icon: AlertTriangle },
-    { label: 'Pagos pendientes', value: pendingPayments, icon: ShoppingCart },
-    { label: 'Ingresos verificados', value: formatBOB(revenue), icon: TrendingUp },
-    { label: 'Reseñas', value: totalReviews, icon: Star }
+    { label: 'Ventas registradas', value: salesCount, icon: ShoppingCart },
+    { label: 'Ingresos por ventas', value: formatBOB(revenue), icon: TrendingUp }
   ];
 
   return (
     <div>
       <AdminModuleHeader
         title="Dashboard"
-        subtitle="Resumen de tu perfumería: inventario, ventas y reseñas de un vistazo"
+        subtitle="Resumen de la tienda: inventario y ventas de un vistazo"
         icon={LayoutDashboard}
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">

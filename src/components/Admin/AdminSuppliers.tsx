@@ -32,7 +32,7 @@ export function AdminSuppliers() {
       <div className="flex items-start justify-between">
         <AdminModuleHeader
           title="Proveedores"
-          subtitle="Administra tus proveedores y vincúlalos a cada perfume"
+          subtitle="Administra tus proveedores y vincúlalos a cada producto"
           icon={Truck}
         />
         <button

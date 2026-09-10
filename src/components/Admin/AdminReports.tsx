@@ -21,24 +21,24 @@ export function AdminReports() {
 
   const [tab, setTab] = React.useState<Tab>(tabs[0]?.id ?? 'ventas');
 
-  const verified = state.orders.filter(o => o.paymentStatus === 'verificado');
+  const sales = state.orders;
 
   // Ventas
-  const revenue = verified.reduce((sum, o) => sum + o.total, 0);
-  const orderCount = verified.length;
-  const avgTicket = orderCount ? Math.round(revenue / orderCount) : 0;
-  const unitsByPerfume: Record<string, { name: string; units: number }> = {};
-  verified.forEach(o => o.items.forEach(it => {
-    unitsByPerfume[it.perfumeId] = {
+  const revenue = sales.reduce((sum, o) => sum + o.total, 0);
+  const salesCount = sales.length;
+  const avgTicket = salesCount ? Math.round(revenue / salesCount) : 0;
+  const unitsByProduct: Record<string, { name: string; units: number }> = {};
+  sales.forEach(o => o.items.forEach(it => {
+    unitsByProduct[it.productId] = {
       name: it.name,
-      units: (unitsByPerfume[it.perfumeId]?.units ?? 0) + it.quantity
+      units: (unitsByProduct[it.productId]?.units ?? 0) + it.quantity
     };
   }));
-  const topSelling = Object.values(unitsByPerfume).sort((a, b) => b.units - a.units);
+  const topSelling = Object.values(unitsByProduct).sort((a, b) => b.units - a.units);
 
   // Inventario (con margen: precio de venta - precio de compra)
-  const inventoryValue = state.perfumes.reduce((sum, p) => sum + p.price * p.stock, 0);
-  const inventoryRows = state.perfumes.map(p => {
+  const inventoryValue = state.products.reduce((sum, p) => sum + p.price * p.stock, 0);
+  const inventoryRows = state.products.map(p => {
     const hasCost = p.purchasePrice != null;
     const marginUnit = hasCost ? p.price - (p.purchasePrice as number) : null;
     const value = p.price * p.stock;
@@ -47,7 +47,7 @@ export function AdminReports() {
   });
   const totalMargin = inventoryRows.reduce((sum, r) => sum + (r.marginTotal ?? 0), 0);
   const byCategory: Record<string, number> = {};
-  state.perfumes.forEach(p => { byCategory[p.category] = (byCategory[p.category] ?? 0) + p.price * p.stock; });
+  state.products.forEach(p => { const c = p.category || 'Sin categoría'; byCategory[c] = (byCategory[c] ?? 0) + p.price * p.stock; });
 
   // Clientes
   const spentByEmail = (email: string) =>
@@ -63,13 +63,13 @@ export function AdminReports() {
 
   const exportCsv = () => {
     if (tab === 'ventas') {
-      downloadCsv('reporte-ventas.csv', toCsv(['Perfume', 'Unidades vendidas'], topSelling.map(t => [t.name, t.units])));
+      downloadCsv('reporte-ventas.csv', toCsv(['Producto', 'Unidades vendidas'], topSelling.map(t => [t.name, t.units])));
     } else if (tab === 'inventario') {
       downloadCsv('reporte-inventario.csv', toCsv(
-        ['Perfume', 'Stock', 'Precio compra (BOB)', 'Precio venta (BOB)', 'Margen unit (BOB)', 'Valor inventario (BOB)', 'Margen total (BOB)'],
+        ['Producto', 'Stock', 'Precio compra (BOB)', 'Precio venta (BOB)', 'Margen unit (BOB)', 'Valor inventario (BOB)', 'Margen total (BOB)'],
         inventoryRows.map(r => [r.name, r.stock, r.purchase ?? '', r.price, r.marginUnit ?? '', r.value, r.marginTotal ?? ''])));
     } else {
-      downloadCsv('reporte-clientes.csv', toCsv(['Cliente', 'Correo', 'Pedidos', 'Gasto (BOB)'],
+      downloadCsv('reporte-clientes.csv', toCsv(['Cliente', 'Correo', 'Ventas', 'Gasto (BOB)'],
         customerRows.map(c => [c.name, c.email, c.orders, c.spent])));
     }
   };
@@ -80,11 +80,11 @@ export function AdminReports() {
         filename: 'reporte-ventas.pdf',
         title: 'Reporte de ventas',
         summary: [
-          { label: 'Ingresos verificados', value: formatBOB(revenue) },
-          { label: 'Pedidos verificados', value: formatNumber(orderCount) },
+          { label: 'Ingresos por ventas', value: formatBOB(revenue) },
+          { label: 'Ventas registradas', value: formatNumber(salesCount) },
           { label: 'Ticket promedio', value: formatBOB(avgTicket) }
         ],
-        headers: ['Perfume', 'Unidades vendidas'],
+        headers: ['Producto', 'Unidades vendidas'],
         rows: topSelling.map(t => [t.name, formatNumber(t.units)])
       });
     } else if (tab === 'inventario') {
@@ -95,7 +95,7 @@ export function AdminReports() {
           { label: 'Valor total de inventario', value: formatBOB(inventoryValue) },
           { label: 'Margen total potencial', value: formatBOB(totalMargin) }
         ],
-        headers: ['Perfume', 'Stock', 'P. compra', 'P. venta', 'Margen unit', 'Valor', 'Margen total'],
+        headers: ['Producto', 'Stock', 'P. compra', 'P. venta', 'Margen unit', 'Valor', 'Margen total'],
         rows: inventoryRows.map(r => [
           r.name,
           formatNumber(r.stock),
@@ -110,7 +110,7 @@ export function AdminReports() {
       exportTablePdf({
         filename: 'reporte-clientes.pdf',
         title: 'Reporte de clientes',
-        headers: ['Cliente', 'Correo', 'Pedidos', 'Gasto'],
+        headers: ['Cliente', 'Correo', 'Ventas', 'Gasto'],
         rows: customerRows.map(c => [c.name, c.email || 'Sin correo', formatNumber(c.orders), formatBOB(c.spent)])
       });
     }
@@ -160,14 +160,14 @@ export function AdminReports() {
           {tab === 'ventas' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div className={card}><div className="text-sm text-gray-500">Ingresos verificados</div><div className="text-2xl font-bold text-essence-navy">{formatBOB(revenue)}</div></div>
-                <div className={card}><div className="text-sm text-gray-500">Pedidos verificados</div><div className="text-2xl font-bold text-essence-navy">{formatNumber(orderCount)}</div></div>
+                <div className={card}><div className="text-sm text-gray-500">Ingresos por ventas</div><div className="text-2xl font-bold text-essence-navy">{formatBOB(revenue)}</div></div>
+                <div className={card}><div className="text-sm text-gray-500">Ventas registradas</div><div className="text-2xl font-bold text-essence-navy">{formatNumber(salesCount)}</div></div>
                 <div className={card}><div className="text-sm text-gray-500">Ticket promedio</div><div className="text-2xl font-bold text-essence-navy">{formatBOB(avgTicket)}</div></div>
               </div>
               <div className={card}>
                 <h3 className="font-playfair text-xl font-semibold text-essence-navy mb-4">Más vendidos</h3>
-                {topSelling.length === 0 ? <p className="text-gray-500">Sin ventas verificadas todavía.</p> : (
-                  <table className="w-full"><thead className="bg-essence-navy/5"><tr><th className={th}>Perfume</th><th className={th}>Unidades</th></tr></thead>
+                {topSelling.length === 0 ? <p className="text-gray-500">Sin ventas todavía.</p> : (
+                  <table className="w-full"><thead className="bg-essence-navy/5"><tr><th className={th}>Producto</th><th className={th}>Unidades</th></tr></thead>
                     <tbody className="divide-y divide-gray-100">{topSelling.map(t => (<tr key={t.name}><td className="px-4 py-2">{t.name}</td><td className="px-4 py-2">{formatNumber(t.units)}</td></tr>))}</tbody></table>
                 )}
               </div>
@@ -181,10 +181,10 @@ export function AdminReports() {
                 <div className={card}><div className="text-sm text-gray-500">Margen total potencial</div><div className="text-2xl font-bold text-green-700">{formatBOB(totalMargin)}</div></div>
               </div>
               <div className={`${card} overflow-x-auto`}>
-                <h3 className="font-playfair text-xl font-semibold text-essence-navy mb-4">Existencias y margen por perfume</h3>
+                <h3 className="font-playfair text-xl font-semibold text-essence-navy mb-4">Existencias y margen por producto</h3>
                 <table className="w-full whitespace-nowrap">
                   <thead className="bg-essence-navy/5"><tr>
-                    <th className={th}>Perfume</th><th className={th}>Stock</th><th className={th}>P. compra</th><th className={th}>P. venta</th><th className={th}>Margen unit.</th><th className={th}>Valor inventario</th><th className={th}>Margen total</th>
+                    <th className={th}>Producto</th><th className={th}>Stock</th><th className={th}>P. compra</th><th className={th}>P. venta</th><th className={th}>Margen unit.</th><th className={th}>Valor inventario</th><th className={th}>Margen total</th>
                   </tr></thead>
                   <tbody className="divide-y divide-gray-100">{inventoryRows.map(r => (
                     <tr key={r.name}>
@@ -211,7 +211,7 @@ export function AdminReports() {
             <div className={card}>
               <h3 className="font-playfair text-xl font-semibold text-essence-navy mb-4">Clientes por gasto</h3>
               {customerRows.length === 0 ? <p className="text-gray-500">Aún no hay clientes registrados.</p> : (
-                <table className="w-full"><thead className="bg-essence-navy/5"><tr><th className={th}>Cliente</th><th className={th}>Correo</th><th className={th}>Pedidos</th><th className={th}>Gasto (BOB)</th></tr></thead>
+                <table className="w-full"><thead className="bg-essence-navy/5"><tr><th className={th}>Cliente</th><th className={th}>Correo</th><th className={th}>Ventas</th><th className={th}>Gasto (BOB)</th></tr></thead>
                   <tbody className="divide-y divide-gray-100">{customerRows.map(c => (<tr key={c.email || c.name}><td className="px-4 py-2">{c.name}</td><td className="px-4 py-2">{c.email || 'Sin correo'}</td><td className="px-4 py-2">{formatNumber(c.orders)}</td><td className="px-4 py-2">{formatBOB(c.spent)}</td></tr>))}</tbody></table>
               )}
             </div>

@@ -4,11 +4,9 @@ import { AdminSidebar, AdminModule } from './AdminSidebar';
 import { Role, isStaffRole } from '../../data/permissions';
 import { AdminDashboard } from './AdminDashboard';
 import { AdminPos } from './AdminPos';
-import { AdminPerfumes } from './AdminPerfumes';
+import { AdminProducts } from './AdminProducts';
 import { AdminSuppliers } from './AdminSuppliers';
-import { AdminOrders } from './AdminOrders';
 import { AdminCustomers } from './AdminCustomers';
-import { AdminReviews } from './AdminReviews';
 import { AdminReports } from './AdminReports';
 import { AdminUsers } from './AdminUsers';
 
@@ -29,11 +27,9 @@ export function AdminPanel() {
     switch (module) {
       case 'dashboard': return <AdminDashboard />;
       case 'pos': return <AdminPos />;
-      case 'perfumes': return <AdminPerfumes />;
+      case 'products': return <AdminProducts />;
       case 'suppliers': return <AdminSuppliers />;
-      case 'orders': return <AdminOrders />;
       case 'customers': return <AdminCustomers />;
-      case 'reviews': return <AdminReviews />;
       case 'reports': return <AdminReports />;
       case 'users': return <AdminUsers />;
       default: return <AdminDashboard />;
