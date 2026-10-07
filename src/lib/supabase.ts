@@ -64,13 +64,15 @@ export interface Product {
   min_stock: number;
   supplier_id: string | null;
   image_url: string | null;
+  use: string | null;
+  expiry_date: string | null;
   active: boolean;
   created_at: string;
   updated_at: string;
   supplier?: Supplier | null;
 }
 
-export type PaymentMethod = 'Efectivo' | 'Tarjeta' | 'Transferencia' | 'QR';
+export type PaymentMethod = 'Efectivo' | 'QR';
 export type SaleStatus = 'completada' | 'anulada';
 
 export interface SaleItem {
@@ -81,6 +83,8 @@ export interface SaleItem {
   quantity: number;
   unit_price: number;
   subtotal: number;
+  is_external?: boolean;
+  external_cost?: number | null;
   created_at: string;
 }
 
@@ -105,7 +109,7 @@ export interface Sale {
 }
 
 export const CATEGORIES: ProductCategory[] = ['PERFUMERIA', 'CUIDADO_PERSONAL', 'COSMETICOS', 'OTRO'];
-export const PAYMENT_METHODS: PaymentMethod[] = ['Efectivo', 'Tarjeta', 'Transferencia', 'QR'];
+export const PAYMENT_METHODS: PaymentMethod[] = ['Efectivo', 'QR'];
 
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB', minimumFractionDigits: 2 }).format(value || 0);
@@ -120,10 +124,10 @@ export function formatDateTime(value: string): string {
 }
 
 // ─── Field mapping helpers ─────────────────────────────────
-const ROLE_MAP: Record<string, Role> = { admin: 'admin', vendedora: 'vendedor', inventarista: 'vendedor' };
-const ROLE_MAP_REVERSE: Record<Role, string> = { vendedor: 'vendedora', admin: 'admin', superadmin: 'admin' };
-const PAYMENT_MAP: Record<string, PaymentMethod> = { efectivo: 'Efectivo', qr: 'QR', transfer: 'Transferencia', card: 'Tarjeta' };
-const PAYMENT_MAP_REVERSE: Record<PaymentMethod, string> = { Efectivo: 'efectivo', QR: 'qr', Transferencia: 'transfer', Tarjeta: 'card' };
+const ROLE_MAP: Record<string, Role> = { admin: 'admin', vendedor: 'vendedor', inventarista: 'vendedor' };
+const ROLE_MAP_REVERSE: Record<Role, string> = { vendedor: 'vendedor', admin: 'admin', superadmin: 'admin' };
+const PAYMENT_MAP: Record<string, PaymentMethod> = { efectivo: 'Efectivo', qr: 'QR', transfer: 'Efectivo', card: 'Efectivo' };
+const PAYMENT_MAP_REVERSE: Record<PaymentMethod, string> = { Efectivo: 'efectivo', QR: 'qr' };
 
 function mapUser(u: any): Profile {
   return { id: u.id, full_name: u.name, last_name: u.lastName || '', phone: u.phone || '', role: ROLE_MAP[u.role] || 'vendedor', active: u.active ?? true, created_at: u.createdAt };
@@ -133,7 +137,7 @@ function mapUserReverse(p: Partial<Profile>) {
   if (p.full_name !== undefined) r.name = p.full_name;
   if (p.last_name !== undefined) r.lastName = p.last_name;
   if (p.phone !== undefined) r.phone = p.phone;
-  if (p.role !== undefined) r.role = ROLE_MAP_REVERSE[p.role] || 'vendedora';
+  if (p.role !== undefined) r.role = ROLE_MAP_REVERSE[p.role] || 'vendedor';
   if (p.active !== undefined) r.active = p.active;
   return r;
 }
@@ -162,7 +166,7 @@ function mapSupplierReverse(s: Partial<Supplier>) {
   return r;
 }
 function mapProduct(p: any): Product {
-  return { id: p.id, name: p.name, barcode: p.barcode || null, category: p.category || '', brand: p.brand || null, description: p.description || null, cost_price: p.purchasePrice ?? 0, sale_price: p.price ?? 0, stock: p.stock ?? 0, min_stock: p.minStock ?? 0, supplier_id: p.supplierId || null, image_url: p.image || null, active: true, created_at: p.createdAt, updated_at: p.updatedAt, supplier: p.supplier ? mapSupplier(p.supplier) : undefined };
+  return { id: p.id, name: p.name, barcode: p.barcode || null, category: p.category || '', brand: p.brand || null, description: p.description || null, cost_price: p.purchasePrice ?? 0, sale_price: p.price ?? 0, stock: p.stock ?? 0, min_stock: p.minStock ?? 0, supplier_id: p.supplierId || null, image_url: p.image || null, use: p.use || null, expiry_date: p.expiryDate || null, active: true, created_at: p.createdAt, updated_at: p.updatedAt, supplier: p.supplier ? mapSupplier(p.supplier) : undefined };
 }
 function mapProductReverse(p: Partial<Product>) {
   const r: any = {};
@@ -177,6 +181,8 @@ function mapProductReverse(p: Partial<Product>) {
   if (p.barcode !== undefined) r.barcode = p.barcode;
   if (p.supplier_id !== undefined) r.supplierId = p.supplier_id;
   if (p.image_url !== undefined) r.image = p.image_url;
+  if (p.use !== undefined) r.use = p.use;
+  if (p.expiry_date !== undefined) r.expiryDate = p.expiry_date;
   return r;
 }
 function mapSale(s: any): Sale {
@@ -187,7 +193,7 @@ function mapSale(s: any): Sale {
     status: 'completada', notes: null, created_at: s.createdAt,
     client: s.customer ? mapClient(s.customer) : undefined,
     seller: s.user ? mapUser(s.user) : undefined,
-    sale_items: s.items?.map((i: any) => ({ id: i.id, sale_id: i.saleId, product_id: i.productId || '', product_name: i.name, quantity: i.quantity, unit_price: i.price, subtotal: i.price * i.quantity - (i.discount || 0), created_at: '' })) || [],
+    sale_items: s.items?.map((i: any) => ({ id: i.id, sale_id: i.saleId, product_id: i.productId || '', product_name: i.name, quantity: i.quantity, unit_price: i.price, subtotal: i.price * i.quantity - (i.discount || 0), is_external: i.isExternal ?? false, external_cost: i.externalCost ?? null, created_at: '' })) || [],
   };
 }
 function mapSaleReverse(s: any) {
@@ -219,6 +225,7 @@ function createQuery(table: string) {
   let op: 'select' | 'insert' | 'update' | 'delete' = 'select';
   let payload: any = null;
   let filters: Array<(row: any) => boolean> = [];
+  let conditions: Array<{ col: string; op: string; val: any }> = [];
   let sortCol: string | null = null;
   let sortAsc = true;
   let limitN: number | null = null;
@@ -233,15 +240,15 @@ function createQuery(table: string) {
   builder.insert = (d: any) => { op = 'insert'; payload = d; return builder; };
   builder.update = (d: any) => { op = 'update'; payload = d; return builder; };
   builder.delete = () => { op = 'delete'; return builder; };
-  builder.eq = (col: string, val: any) => { filters.push((r: any) => r[col] === val); return builder; };
-  builder.neq = (col: string, val: any) => { filters.push((r: any) => r[col] !== val); return builder; };
-  builder.gte = (col: string, val: any) => { filters.push((r: any) => r[col] >= val); return builder; };
-  builder.lte = (col: string, val: any) => { filters.push((r: any) => r[col] <= val); return builder; };
-  builder.gt = (col: string, val: any) => { filters.push((r: any) => r[col] > val); return builder; };
-  builder.lt = (col: string, val: any) => { filters.push((r: any) => r[col] < val); return builder; };
-  builder.is = (col: string, val: any) => { filters.push((r: any) => val === null ? r[col] === null : r[col] === val); return builder; };
-  builder.not = (col: string, _op: string, val: any) => { filters.push((r: any) => r[col] !== val); return builder; };
-  builder.in = (col: string, vals: any[]) => { filters.push((r: any) => vals.includes(r[col])); return builder; };
+  builder.eq = (col: string, val: any) => { filters.push((r: any) => r[col] === val); conditions.push({ col, op: 'eq', val }); return builder; };
+  builder.neq = (col: string, val: any) => { filters.push((r: any) => r[col] !== val); conditions.push({ col, op: 'neq', val }); return builder; };
+  builder.gte = (col: string, val: any) => { filters.push((r: any) => r[col] >= val); conditions.push({ col, op: 'gte', val }); return builder; };
+  builder.lte = (col: string, val: any) => { filters.push((r: any) => r[col] <= val); conditions.push({ col, op: 'lte', val }); return builder; };
+  builder.gt = (col: string, val: any) => { filters.push((r: any) => r[col] > val); conditions.push({ col, op: 'gt', val }); return builder; };
+  builder.lt = (col: string, val: any) => { filters.push((r: any) => r[col] < val); conditions.push({ col, op: 'lt', val }); return builder; };
+  builder.is = (col: string, val: any) => { filters.push((r: any) => val === null ? r[col] === null : r[col] === val); conditions.push({ col, op: 'is', val }); return builder; };
+  builder.not = (col: string, _op: string, val: any) => { filters.push((r: any) => r[col] !== val); conditions.push({ col, op: 'not', val }); return builder; };
+  builder.in = (col: string, vals: any[]) => { filters.push((r: any) => vals.includes(r[col])); conditions.push({ col, op: 'in', val: vals }); return builder; };
   builder.order = (col: string, opts?: { ascending?: boolean }) => { sortCol = col; sortAsc = opts?.ascending !== false; return builder; };
   builder.limit = (n: number) => { limitN = n; return builder; };
   builder.range = (from: number, to: number) => { rangeFrom = from; rangeTo = to; return builder; };
@@ -265,18 +272,19 @@ function createQuery(table: string) {
           else if (table === 'sales') {
             // Map sale items to backend format
             const saleItems = (row.items || row.sale_items || []).map((i: any) => ({
-              productId: i.productId || i.product_id,
+              productId: i.productId || i.product_id || null,
               name: i.product_name || i.name,
               price: i.unit_price || i.price,
               quantity: i.quantity,
               discount: i.discount || 0,
+              isExternal: i.is_external || i.isExternal || false,
+              externalCost: i.external_cost ?? i.externalCost ?? null,
             }));
+            // El backend calcula subtotal/total desde los items (no se envían).
             mapped = {
               customerId: row.client_id || row.customerId || null,
               userId: row.seller_id || row.userId || null,
               customerName: row.customer_name || row.customerName || null,
-              subtotal: row.subtotal,
-              total: row.total,
               discount: row.discount || 0,
               paymentMethod: PAYMENT_MAP_REVERSE[row.payment_method as PaymentMethod] || 'efectivo',
               paymentReference: row.payment_reference || row.paymentReference || null,
@@ -304,26 +312,9 @@ function createQuery(table: string) {
         else if (table === 'suppliers') mapped = mapSupplierReverse(payload);
         else if (table === 'products') mapped = mapProductReverse(payload);
         else if (table === 'sales') mapped = mapSaleReverse(payload);
-        const idFilter = filters.find((f: any) => {
-          const src = f.toString();
-          return src.includes('===') || src.includes('==');
-        });
-        let id: string | null = null;
-        if (idFilter) {
-          const captured: any = {};
-          const fakeRow = new Proxy({}, { get: (_t, prop: string) => { captured[prop] = undefined; return undefined; } });
-          idFilter(fakeRow);
-          const filterStr = idFilter.toString();
-          const idMatch = filterStr.match(/['"](\w+)['"]\s*(?:===?|==)\s*['"]([^'"]+)['"]/);
-          if (idMatch) { captured[idMatch[1]] = idMatch[2]; id = idMatch[2]; }
-        }
-        if (!id) {
-          for (const f of filters) {
-            const testRow: any = {};
-            for (const key of Object.keys(mapped)) testRow[key] = (mapped as any)[key];
-          }
-        }
-        if (!id) return { data: [], error: null, count: 0 };
+        const idCond = conditions.find((c) => c.col === 'id' && c.op === 'eq');
+        if (!idCond) return { data: [], error: null, count: 0 };
+        const id = String(idCond.val);
         const updated = await api<any>(`/${endpoint}/${id}`, { method: 'PATCH', body: JSON.stringify(mapped) });
         let result: any = updated;
         if (table === 'profiles' || table === 'users') result = mapUser(updated);
@@ -335,14 +326,9 @@ function createQuery(table: string) {
       }
 
       if (op === 'delete') {
-        let id: string | null = null;
-        for (const f of filters) {
-          const testRow: any = {};
-          const src = f.toString();
-          const match = src.match(/['"](\w+)['"]\s*(?:===?|==)\s*['"]([^'"]+)['"]/);
-          if (match) { id = match[2]; break; }
-        }
-        if (!id) return { data: [], error: null, count: 0 };
+        const idCond = conditions.find((c) => c.col === 'id' && c.op === 'eq');
+        if (!idCond) return { data: [], error: null, count: 0 };
+        const id = String(idCond.val);
         await api<any>(`/${endpoint}/${id}`, { method: 'DELETE' });
         return { data: [], error: null, count: 1 };
       }
@@ -412,7 +398,8 @@ export const supabase = {
     async signUp(creds: { email: string; password: string; options?: { data?: any } }) {
       try {
         const data = creds.options?.data || {};
-        const user = await api<any>('/users', { method: 'POST', body: JSON.stringify({ email: creds.email, password: creds.password, name: data.full_name || 'Usuario', lastName: data.last_name || '', phone: data.phone || '', role: data.role || 'vendedora' }) });
+        const role = (ROLE_MAP_REVERSE[data.role as Role] ?? 'vendedor');
+        const user = await api<any>('/users', { method: 'POST', body: JSON.stringify({ email: creds.email, password: creds.password, name: data.full_name || 'Usuario', lastName: data.last_name || '', phone: data.phone || '', role }) });
         return { data: { user: { id: user.id } }, error: null };
       } catch (e: any) {
         return { data: { user: null }, error: { message: e.message } };

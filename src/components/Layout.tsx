@@ -13,12 +13,14 @@ import {
   ChevronLeft,
   Sun,
   Moon,
+  Wallet,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Role } from '@/lib/supabase';
 
-export type PageKey = 'dashboard' | 'products' | 'sales' | 'clients' | 'suppliers' | 'users' | 'reports';
+export type PageKey = 'dashboard' | 'products' | 'sales' | 'cash' | 'clients' | 'suppliers' | 'users' | 'reports' | 'settings';
 
 interface NavItem {
   key: PageKey;
@@ -34,7 +36,9 @@ const navItems: NavItem[] = [
   { key: 'suppliers', label: 'Proveedores', icon: <Truck size={20} />, roles: ['admin', 'superadmin'] },
   { key: 'products', label: 'Productos', icon: <Package size={20} />, roles: ['vendedor', 'admin', 'superadmin'] },
   { key: 'sales', label: 'Ventas', icon: <ShoppingCart size={20} />, roles: ['vendedor', 'admin', 'superadmin'] },
+  { key: 'cash', label: 'Caja', icon: <Wallet size={20} />, roles: ['vendedor', 'admin', 'superadmin'] },
   { key: 'reports', label: 'Reportes', icon: <FileBarChart size={20} />, roles: ['vendedor', 'admin', 'superadmin'] },
+  { key: 'settings', label: 'Ajustes', icon: <SettingsIcon size={20} />, roles: ['admin', 'superadmin'] },
 ];
 
 interface LayoutProps {

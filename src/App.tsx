@@ -11,16 +11,20 @@ import { Clients } from '@/pages/Clients';
 import { Suppliers } from '@/pages/Suppliers';
 import { Users } from '@/pages/Users';
 import { Reports } from '@/pages/Reports';
+import { Cash } from '@/pages/Cash';
+import { Settings } from '@/pages/Settings';
 import { Role } from '@/lib/supabase';
 
 const pageAccess: Record<PageKey, Role[]> = {
   dashboard: ['vendedor', 'admin', 'superadmin'],
   products: ['vendedor', 'admin', 'superadmin'],
   sales: ['vendedor', 'admin', 'superadmin'],
+  cash: ['vendedor', 'admin', 'superadmin'],
   clients: ['vendedor', 'admin', 'superadmin'],
   suppliers: ['admin', 'superadmin'],
   users: ['admin', 'superadmin'],
   reports: ['admin', 'superadmin'],
+  settings: ['admin', 'superadmin'],
 };
 
 function AppContent() {
@@ -50,10 +54,12 @@ function AppContent() {
     dashboard: <Dashboard />,
     products: <Products />,
     sales: <Sales />,
+    cash: <Cash />,
     clients: <Clients />,
     suppliers: <Suppliers />,
     users: <Users />,
     reports: <Reports />,
+    settings: <Settings />,
   };
 
   return (
