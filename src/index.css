@@ -11,9 +11,6 @@
   body {
     @apply font-sans bg-neutral-50 text-neutral-800;
   }
-  h1, h2, h3 {
-    @apply font-display;
-  }
 }
 .dark body {
   background-color: rgb(9, 9, 11);

@@ -55,7 +55,7 @@ export function Reports() {
   }, [sales, products, clients]);
 
   const paymentBreakdown = useMemo(() => {
-    const methods: PaymentMethod[] = ['Efectivo', 'Tarjeta', 'Transferencia', 'QR'];
+    const methods: PaymentMethod[] = ['Efectivo', 'QR'];
     return methods.map((method) => {
       const methodSales = sales.filter((s) => s.payment_method === method);
       return { method, count: methodSales.length, total: methodSales.reduce((sum, s) => sum + Number(s.total), 0) };
@@ -176,7 +176,7 @@ export function Reports() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-bold text-neutral-800 dark:text-neutral-100">Reportes</h1>
+          <h1 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">Reportes</h1>
           <p className="text-neutral-400 dark:text-neutral-500 text-sm mt-1">Análisis y estadísticas del negocio</p>
         </div>
         <div className="flex items-center gap-3">
@@ -295,7 +295,7 @@ export function Reports() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="card p-5"><p className="text-sm text-neutral-400">Valor inventario (venta)</p><p className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">{formatCurrency(stats.inventoryValue)}</p></div>
             <div className="card p-5"><p className="text-sm text-neutral-400">Valor inventario (costo)</p><p className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">{formatCurrency(stats.inventoryCost)}</p></div>
-            <div className="card p-5"><p className="text-sm text-neutral-400">Stock bajo / Agotados</p><p className="text-2xl font-bold"><span className="text-warning-600">{stats.lowStock}</span> / <span className="text-error-600">{stats.outStock}</span></p></div>
+            <div className="card p-5"><p className="text-sm text-neutral-400">Stock bajo / Agotados</p><p className="text-2xl font-bold"><span className="text-error-600">{stats.lowStock}</span> / <span className="text-error-600">{stats.outStock}</span></p></div>
           </div>
           <div className="card overflow-hidden">
             <div className="px-6 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
@@ -320,7 +320,7 @@ export function Reports() {
                     <tr key={p.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
                       <td className="px-5 py-3 text-sm font-medium text-neutral-700 dark:text-neutral-200">{p.name}</td>
                       <td className="px-5 py-3 text-sm text-neutral-500">{p.category}</td>
-                      <td className={`px-5 py-3 text-sm text-right font-semibold ${p.stock === 0 ? 'text-error-600' : p.stock <= p.min_stock ? 'text-warning-600' : 'text-success-600'}`}>{p.stock}</td>
+                      <td className={`px-5 py-3 text-sm text-right font-semibold ${p.stock === 0 || p.stock <= p.min_stock ? 'text-error-600' : 'text-success-600'}`}>{p.stock}</td>
                       <td className="px-5 py-3 text-sm text-right text-neutral-400">{p.min_stock}</td>
                       <td className="px-5 py-3 text-sm text-right text-neutral-700 dark:text-neutral-200">{formatCurrency(p.sale_price)}</td>
                       <td className="px-5 py-3 text-sm text-neutral-500">{p.supplier?.name ?? '-'}</td>

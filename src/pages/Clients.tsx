@@ -126,7 +126,7 @@ export function Clients() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-bold text-neutral-800 dark:text-neutral-100">Clientes</h1>
+          <h1 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">Clientes</h1>
           <p className="text-neutral-400 dark:text-neutral-500 text-sm mt-1">{filtered.length} clientes registrados</p>
         </div>
         {canEdit && <button onClick={openCreate} className="btn-primary"><Plus size={18} /> Nuevo cliente</button>}
@@ -178,7 +178,7 @@ export function Clients() {
                   <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
                     <div>
                       <p className="text-xs text-neutral-400 dark:text-neutral-500">Compras</p>
-                      <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{stats.count} ventas</p>
+                      <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{stats.count} productos</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-neutral-400 dark:text-neutral-500">Total</p>

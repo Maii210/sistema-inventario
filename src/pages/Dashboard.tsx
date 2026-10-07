@@ -184,7 +184,7 @@ export function Dashboard() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-bold text-neutral-800 dark:text-neutral-100">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">Dashboard</h1>
           <p className="text-neutral-400 dark:text-neutral-500 text-sm mt-1">
             Bienvenida, {profile?.full_name}. Resumen de inventario y ventas.
           </p>
@@ -307,7 +307,7 @@ export function Dashboard() {
         <div className="card p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Stock bajo</h2>
-            <AlertTriangle size={20} className={lowStockProducts.length > 0 ? 'text-warning-500' : 'text-neutral-300 dark:text-neutral-600'} />
+            <AlertTriangle size={20} className={lowStockProducts.length > 0 ? 'text-error-500' : 'text-neutral-300 dark:text-neutral-600'} />
           </div>
           {lowStockProducts.length === 0 ? (
             <div className="py-10 text-center text-neutral-400 dark:text-neutral-500 text-sm">
@@ -321,7 +321,7 @@ export function Dashboard() {
                     <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200 truncate">{product.name}</p>
                     <p className="text-xs text-neutral-400 dark:text-neutral-500">{product.category}</p>
                   </div>
-                  <span className={`badge ${product.stock === 0 ? 'bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300' : 'bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300'}`}>
+                  <span className={`badge ${product.stock === 0 ? 'bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300' : 'bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300'}`}>
                     {product.stock} und.
                   </span>
                 </div>

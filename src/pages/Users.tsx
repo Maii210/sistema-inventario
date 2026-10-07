@@ -19,7 +19,7 @@ const roleColors: Record<Role, string> = {
   superadmin: 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300',
 };
 
-const emptyForm = { full_name: '', last_name: '', email: '', phone: '', password: '', role: 'vendedor' as Role };
+const emptyForm = { full_name: '', last_name: '', email: '', phone: '', password: '', role: 'vendedor' as Role, active: true };
 
 export function Users() {
   const { user } = useAuth();
@@ -67,6 +67,7 @@ export function Users() {
       phone: profile.phone ?? '',
       password: '',
       role: profile.role,
+      active: profile.active,
     });
     setModalOpen(true);
   };
@@ -87,7 +88,7 @@ export function Users() {
     }
 
     if (editing) {
-      const { error } = await supabase.from('profiles').update({ full_name: form.full_name, last_name: form.last_name, phone: form.phone, role: form.role }).eq('id', editing.id);
+      const { error } = await supabase.from('profiles').update({ full_name: form.full_name, last_name: form.last_name, phone: form.phone, role: form.role, active: form.active }).eq('id', editing.id);
       if (error) show(error.message, 'error');
       else { show('Usuario actualizado'); setModalOpen(false); loadUsers(); }
     } else {
@@ -123,7 +124,7 @@ export function Users() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-bold text-neutral-800 dark:text-neutral-100">Usuarios</h1>
+          <h1 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">Usuarios</h1>
           <p className="text-neutral-400 dark:text-neutral-500 text-sm mt-1">{users.length} usuarios en el sistema</p>
         </div>
         <button onClick={openCreate} className="btn-primary"><Plus size={18} /> Nuevo usuario</button>
@@ -245,6 +246,29 @@ export function Users() {
               ))}
             </div>
           </div>
+          {editing && (
+            <div>
+              <label className="label">Estado</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setForm({ ...form, active: true })}
+                  className={`px-3 py-2.5 rounded-xl text-sm font-medium border transition flex items-center justify-center gap-2 ${
+                    form.active
+                      ? 'border-success-300 bg-success-50 text-success-700 dark:border-success-700 dark:bg-success-900/30 dark:text-success-300'
+                      : 'border-neutral-200 text-neutral-500 hover:border-neutral-300 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600'
+                  }`}>
+                  <CheckCircle size={16} /> Activo
+                </button>
+                <button type="button" onClick={() => setForm({ ...form, active: false })}
+                  className={`px-3 py-2.5 rounded-xl text-sm font-medium border transition flex items-center justify-center gap-2 ${
+                    !form.active
+                      ? 'border-error-300 bg-error-50 text-error-700 dark:border-error-700 dark:bg-error-900/30 dark:text-error-300'
+                      : 'border-neutral-200 text-neutral-500 hover:border-neutral-300 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-600'
+                  }`}>
+                  <XCircle size={16} /> Inactivo
+                </button>
+              </div>
+            </div>
+          )}
           <div className="flex gap-3 justify-end pt-2">
             <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Cancelar</button>
             <button type="submit" className="btn-primary" disabled={saving}>

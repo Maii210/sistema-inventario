@@ -31,7 +31,7 @@ export interface ApiUser {
   name: string;
   lastName: string;
   email: string;
-  role: 'admin' | 'vendedora' | 'inventarista';
+  role: 'admin' | 'vendedor' | 'inventarista';
   active: boolean;
   phone: string | null;
   createdAt: string;
@@ -151,6 +151,38 @@ export const salesApi = {
   update: (id: string, data: Partial<ApiSale>) =>
     request<ApiSale>(`/sales/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   delete: (id: string) => request<void>(`/sales/${id}`, { method: 'DELETE' }),
+};
+
+// ─── Settings (configuración clave/valor, ej. QR del banco) ─
+export const settingsApi = {
+  get: (key: string) => request<{ key: string; value: string } | null>(`/settings/${key}`),
+  set: (key: string, value: string) =>
+    request<{ key: string; value: string }>(`/settings/${key}`, { method: 'PUT', body: JSON.stringify({ value }) }),
+};
+
+// ─── Caja (arqueo) ─────────────────────────────────────────
+export interface CashSession {
+  id: string;
+  openedAt: string;
+  openingAmount: number;
+  openedByName: string | null;
+  closedAt: string | null;
+  countedAmount: number | null;
+  closedByName: string | null;
+  status: 'open' | 'closed';
+  notes: string | null;
+  totals?: { count: number; total: number; byMethod: Record<string, number> };
+  expectedCash?: number;
+  difference?: number | null;
+}
+
+export const cashApi = {
+  current: () => request<CashSession | null>('/cash/current'),
+  history: () => request<CashSession[]>('/cash'),
+  open: (data: { openingAmount: number; openedById?: string; openedByName?: string }) =>
+    request<CashSession>('/cash/open', { method: 'POST', body: JSON.stringify(data) }),
+  close: (id: string, data: { countedAmount: number; closedById?: string; closedByName?: string; notes?: string }) =>
+    request<CashSession>(`/cash/${id}/close`, { method: 'POST', body: JSON.stringify(data) }),
 };
 
 // ─── Reports ───────────────────────────────────────────────
