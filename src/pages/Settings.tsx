@@ -17,7 +17,7 @@ export function Settings() {
   const onUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { show('La imagen no debe superar 2MB', 'error'); return; }
+    if (file.size > 10 * 1024 * 1024) { show('La imagen no debe superar 10MB', 'error'); return; }
     const reader = new FileReader();
     reader.onload = (ev) => setQr(ev.target?.result as string);
     reader.readAsDataURL(file);
