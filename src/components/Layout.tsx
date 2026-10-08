@@ -1,4 +1,5 @@
 import { useState, ReactNode } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
@@ -22,6 +23,24 @@ import { Role } from '@/lib/supabase';
 
 export type PageKey = 'dashboard' | 'products' | 'sales' | 'cash' | 'clients' | 'suppliers' | 'users' | 'reports' | 'settings';
 
+// Ruta URL de cada página.
+export const PAGE_PATHS: Record<PageKey, string> = {
+  dashboard: '/',
+  products: '/productos',
+  sales: '/ventas',
+  cash: '/caja',
+  clients: '/clientes',
+  suppliers: '/proveedores',
+  users: '/usuarios',
+  reports: '/reportes',
+  settings: '/ajustes',
+};
+
+// Inverso: pathname → página.
+export const PATH_TO_PAGE: Record<string, PageKey> = Object.fromEntries(
+  Object.entries(PAGE_PATHS).map(([k, v]) => [v, k as PageKey])
+) as Record<string, PageKey>;
+
 interface NavItem {
   key: PageKey;
   label: string;
@@ -42,16 +61,17 @@ const navItems: NavItem[] = [
 ];
 
 interface LayoutProps {
-  current: PageKey;
-  onNavigate: (page: PageKey) => void;
   children: ReactNode;
 }
 
-export function Layout({ current, onNavigate, children }: LayoutProps) {
+export function Layout({ children }: LayoutProps) {
   const { profile, signOut } = useAuth();
   const { theme, toggle } = useTheme();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+
+  const current = PATH_TO_PAGE[location.pathname] ?? 'dashboard';
 
   const visibleItems = navItems.filter((item) => profile && item.roles.includes(profile.role));
 
@@ -65,11 +85,6 @@ export function Layout({ current, onNavigate, children }: LayoutProps) {
     vendedor: 'bg-accent-100 text-accent-700 dark:bg-accent-900/40 dark:text-accent-300',
     admin: 'bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300',
     superadmin: 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300',
-  };
-
-  const handleNav = (key: PageKey) => {
-    onNavigate(key);
-    setMobileOpen(false);
   };
 
   const ThemeToggle = () => (
@@ -114,9 +129,10 @@ export function Layout({ current, onNavigate, children }: LayoutProps) {
           {visibleItems.map((item) => {
             const active = current === item.key;
             return (
-              <button
+              <Link
                 key={item.key}
-                onClick={() => handleNav(item.key)}
+                to={PAGE_PATHS[item.key]}
+                onClick={() => setMobileOpen(false)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   active
                     ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
@@ -127,7 +143,7 @@ export function Layout({ current, onNavigate, children }: LayoutProps) {
                 <span className="shrink-0">{item.icon}</span>
                 {!collapsed && <span className="truncate">{item.label}</span>}
                 {active && !collapsed && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary-500" />}
-              </button>
+              </Link>
             );
           })}
         </nav>

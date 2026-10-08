@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { ToastProvider } from '@/components/ui/Toast';
 import { Login } from '@/pages/Login';
-import { Layout, PageKey } from '@/components/Layout';
+import { Layout, PageKey, PATH_TO_PAGE } from '@/components/Layout';
 import { Dashboard } from '@/pages/Dashboard';
 import { Products } from '@/pages/Products';
 import { Sales } from '@/pages/Sales';
@@ -14,6 +13,7 @@ import { Reports } from '@/pages/Reports';
 import { Cash } from '@/pages/Cash';
 import { Settings } from '@/pages/Settings';
 import { Role } from '@/lib/supabase';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 
 const pageAccess: Record<PageKey, Role[]> = {
   dashboard: ['vendedor', 'admin', 'superadmin'],
@@ -27,16 +27,25 @@ const pageAccess: Record<PageKey, Role[]> = {
   settings: ['admin', 'superadmin'],
 };
 
-function AppContent() {
-  const { session, profile, loading } = useAuth();
-  const [page, setPage] = useState<PageKey>('dashboard');
+// Shell con sidebar: protege cada ruta según el rol del usuario.
+function ProtectedShell() {
+  const { profile } = useAuth();
+  const location = useLocation();
+  const page = PATH_TO_PAGE[location.pathname];
 
-  // Guard: if current page isn't allowed for user role, fall back to dashboard
-  useEffect(() => {
-    if (profile && !pageAccess[page].includes(profile.role)) {
-      setPage('dashboard');
-    }
-  }, [profile, page]);
+  if (profile && page && !pageAccess[page].includes(profile.role)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return (
+    <Layout>
+      <Outlet />
+    </Layout>
+  );
+}
+
+function AppContent() {
+  const { session, loading } = useAuth();
 
   if (loading) {
     return (
@@ -46,26 +55,27 @@ function AppContent() {
     );
   }
 
-  if (!session) {
-    return <Login />;
-  }
-
-  const pages: Record<PageKey, React.ReactNode> = {
-    dashboard: <Dashboard />,
-    products: <Products />,
-    sales: <Sales />,
-    cash: <Cash />,
-    clients: <Clients />,
-    suppliers: <Suppliers />,
-    users: <Users />,
-    reports: <Reports />,
-    settings: <Settings />,
-  };
-
   return (
-    <Layout current={page} onNavigate={setPage}>
-      {pages[page]}
-    </Layout>
+    <BrowserRouter>
+      {!session ? (
+        <Login />
+      ) : (
+        <Routes>
+          <Route element={<ProtectedShell />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/productos" element={<Products />} />
+            <Route path="/ventas" element={<Sales />} />
+            <Route path="/caja" element={<Cash />} />
+            <Route path="/clientes" element={<Clients />} />
+            <Route path="/proveedores" element={<Suppliers />} />
+            <Route path="/usuarios" element={<Users />} />
+            <Route path="/reportes" element={<Reports />} />
+            <Route path="/ajustes" element={<Settings />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      )}
+    </BrowserRouter>
   );
 }
 
