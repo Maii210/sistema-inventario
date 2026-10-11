@@ -5,8 +5,11 @@ import { settingsApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { Modal } from '@/components/ui/Modal';
+import { Pager } from '@/components/ui/Pager';
 import { useToast } from '@/components/ui/Toast';
 import jsPDF from 'jspdf';
+
+const PAGE_SIZE = 12;
 
 interface CartItem {
   product: Product;
@@ -48,8 +51,10 @@ export function Sales() {
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
+  const [page, setPage] = useState(1);
 
   useEffect(() => { loadData(); }, []);
+  useEffect(() => { setPage(1); }, [search, viewMode]);
   useEffect(() => {
     settingsApi.get('bank_qr').then((s) => setBankQr(s?.value || '')).catch(() => setBankQr(''));
   }, []);
@@ -88,6 +93,8 @@ export function Sales() {
   };
 
   const filteredProducts = products.filter((p) => !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.barcode?.includes(search) || p.brand?.toLowerCase().includes(search.toLowerCase()));
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const pagedProducts = filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const addToCart = useCallback((product: Product) => {
     setCart((prev) => {
@@ -267,7 +274,7 @@ export function Sales() {
               <div className="py-12 text-center text-neutral-400 dark:text-neutral-500 text-sm">{search ? 'No se encontraron productos' : 'No hay productos'}</div>
             ) : viewMode === 'cards' ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {filteredProducts.map((product) => {
+                {pagedProducts.map((product) => {
                   const out = product.stock === 0;
                   return (
                     <button key={product.id} onClick={() => addToCart(product)} disabled={out}
@@ -289,7 +296,7 @@ export function Sales() {
                   <tr><th className="py-2 pr-2">Producto</th><th className="py-2 pr-2">Precio</th><th className="py-2 pr-2">Stock</th><th className="py-2"></th></tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                  {filteredProducts.map((product) => {
+                  {pagedProducts.map((product) => {
                     const out = product.stock === 0;
                     return (
                       <tr key={product.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
@@ -310,6 +317,7 @@ export function Sales() {
                 </tbody>
               </table>
             )}
+            <Pager page={page} totalPages={totalPages} onChange={setPage} />
           </div>
         </div>
 

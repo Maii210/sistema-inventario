@@ -7,6 +7,7 @@ import {
   TrendingUp,
   AlertTriangle,
   Receipt,
+  Sparkles,
 } from 'lucide-react';
 import {
   BarChart,
@@ -27,6 +28,10 @@ import { useAuth } from '@/context/AuthContext';
 type Period = 'today' | 'week' | 'month' | 'year';
 
 const PIE_COLORS = ['#ec4899', '#d2684f', '#8b5cf6', '#22c55e', '#f59e0b'];
+
+// Logo de la empresa y crédito (completar cuando el usuario envíe el material).
+const COMPANY_LOGO_URL = '';
+const DESARROLLADO_POR = 'Desarrollado por';
 
 export function Dashboard() {
   const { profile } = useAuth();
@@ -136,7 +141,7 @@ export function Dashboard() {
 
   const statCards = useMemo(() => [
     {
-      label: 'Ventas de hoy',
+      label: 'Ventas',
       value: formatCurrency(stats.todayTotal),
       icon: <DollarSign size={22} />,
       color: 'from-primary-500 to-primary-600',
@@ -147,7 +152,7 @@ export function Dashboard() {
       value: formatCurrency(stats.monthTotal),
       icon: <TrendingUp size={22} />,
       color: 'from-success-500 to-success-600',
-      sub: 'Total acumulado',
+      sub: 'Acumulado del rango seleccionado',
     },
     {
       label: 'Productos activos',
@@ -228,7 +233,7 @@ export function Dashboard() {
               <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#a1a1aa" />
               <YAxis tick={{ fontSize: 11 }} stroke="#a1a1aa" />
               <Tooltip
-                formatter={(value: number) => [formatCurrency(value), 'Ventas']}
+                formatter={(value: any) => [formatCurrency(Number(value)), 'Ventas']}
                 contentStyle={{ borderRadius: 12, border: '1px solid #e4e4e7' }}
               />
               <Bar dataKey="ventas" fill="#ec4899" radius={[6, 6, 0, 0]} />
@@ -259,7 +264,7 @@ export function Dashboard() {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value: number) => [formatCurrency(value), 'Valor']}
+                  formatter={(value: any) => [formatCurrency(Number(value)), 'Valor']}
                   contentStyle={{ borderRadius: 12, border: '1px solid #e4e4e7' }}
                 />
                 <Legend />
@@ -329,6 +334,15 @@ export function Dashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="flex items-center justify-center gap-2 pt-4 pb-2 text-xs text-neutral-400 dark:text-neutral-500">
+        {COMPANY_LOGO_URL ? (
+          <img src={COMPANY_LOGO_URL} alt="Logo" className="h-6 object-contain" />
+        ) : (
+          <Sparkles size={16} />
+        )}
+        <span>{DESARROLLADO_POR}</span>
       </div>
     </div>
   );

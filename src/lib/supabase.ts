@@ -21,6 +21,8 @@ export interface Profile {
   full_name: string;
   last_name: string;
   phone: string;
+  email: string | null;
+  document_id: string | null;
   role: Role;
   active: boolean;
   created_at: string;
@@ -124,25 +126,27 @@ export function formatDateTime(value: string): string {
 }
 
 // ─── Field mapping helpers ─────────────────────────────────
-const ROLE_MAP: Record<string, Role> = { admin: 'admin', vendedor: 'vendedor', inventarista: 'vendedor' };
-const ROLE_MAP_REVERSE: Record<Role, string> = { vendedor: 'vendedor', admin: 'admin', superadmin: 'admin' };
+const ROLE_MAP: Record<string, Role> = { admin: 'admin', vendedor: 'vendedor', inventarista: 'vendedor', superadmin: 'superadmin' };
+const ROLE_MAP_REVERSE: Record<Role, string> = { vendedor: 'vendedor', admin: 'admin', superadmin: 'superadmin' };
 const PAYMENT_MAP: Record<string, PaymentMethod> = { efectivo: 'Efectivo', qr: 'QR', transfer: 'Efectivo', card: 'Efectivo' };
 const PAYMENT_MAP_REVERSE: Record<PaymentMethod, string> = { Efectivo: 'efectivo', QR: 'qr' };
 
 function mapUser(u: any): Profile {
-  return { id: u.id, full_name: u.name, last_name: u.lastName || '', phone: u.phone || '', role: ROLE_MAP[u.role] || 'vendedor', active: u.active ?? true, created_at: u.createdAt };
+  return { id: u.id, full_name: u.name, last_name: u.lastName || '', phone: u.phone || '', email: u.email ?? null, document_id: u.documentId ?? null, role: ROLE_MAP[u.role] || 'vendedor', active: u.active ?? true, created_at: u.createdAt };
 }
 function mapUserReverse(p: Partial<Profile>) {
   const r: any = {};
   if (p.full_name !== undefined) r.name = p.full_name;
   if (p.last_name !== undefined) r.lastName = p.last_name;
   if (p.phone !== undefined) r.phone = p.phone;
+  if (p.email !== undefined) r.email = p.email;
+  if (p.document_id !== undefined) r.documentId = p.document_id;
   if (p.role !== undefined) r.role = ROLE_MAP_REVERSE[p.role] || 'vendedor';
   if (p.active !== undefined) r.active = p.active;
   return r;
 }
 function mapClient(c: any): Client {
-  return { id: c.id, name: c.name, last_name: c.lastName || '', document_id: c.documentId || null, email: c.email || null, phone: c.phone || null, address: null, notes: null, created_at: c.createdAt };
+  return { id: c.id, name: c.name, last_name: c.lastName || '', document_id: c.documentId || null, email: c.email || null, phone: c.phone || null, address: c.address || null, notes: c.notes || null, created_at: c.createdAt };
 }
 function mapClientReverse(c: Partial<Client>) {
   const r: any = {};
@@ -151,10 +155,12 @@ function mapClientReverse(c: Partial<Client>) {
   if (c.document_id !== undefined) r.documentId = c.document_id;
   if (c.email !== undefined) r.email = c.email;
   if (c.phone !== undefined) r.phone = c.phone;
+  if (c.address !== undefined) r.address = c.address;
+  if (c.notes !== undefined) r.notes = c.notes;
   return r;
 }
 function mapSupplier(s: any): Supplier {
-  return { id: s.id, name: s.name, contact_name: s.contactName || null, email: s.email || null, phone: s.phone || null, address: null, notes: s.notes || null, created_at: s.createdAt };
+  return { id: s.id, name: s.name, contact_name: s.contactName || null, email: s.email || null, phone: s.phone || null, address: s.address || null, notes: s.notes || null, created_at: s.createdAt };
 }
 function mapSupplierReverse(s: Partial<Supplier>) {
   const r: any = {};
@@ -162,6 +168,7 @@ function mapSupplierReverse(s: Partial<Supplier>) {
   if (s.contact_name !== undefined) r.contactName = s.contact_name;
   if (s.email !== undefined) r.email = s.email;
   if (s.phone !== undefined) r.phone = s.phone;
+  if (s.address !== undefined) r.address = s.address;
   if (s.notes !== undefined) r.notes = s.notes;
   return r;
 }
@@ -204,7 +211,7 @@ function mapSaleReverse(s: any) {
   if (s.subtotal !== undefined) r.subtotal = s.subtotal;
   if (s.discount !== undefined) r.discount = s.discount;
   if (s.total !== undefined) r.total = s.total;
-  if (s.payment_method !== undefined) r.paymentMethod = PAYMENT_MAP_REVERSE[s.payment_method] || 'efectivo';
+  if (s.payment_method !== undefined) r.paymentMethod = PAYMENT_MAP_REVERSE[s.payment_method as PaymentMethod] || 'efectivo';
   if (s.payment_reference !== undefined) r.paymentReference = s.payment_reference;
   if (s.notes !== undefined) r.notes = s.notes;
   return r;
@@ -236,7 +243,7 @@ function createQuery(table: string) {
   let withRelated: string[] = [];
 
   const builder: any = {};
-  builder.select = (s?: string) => { if (s) selectStr = s; op = 'select'; return builder; };
+  builder.select = (s?: string) => { if (s) selectStr = s; return builder; };
   builder.insert = (d: any) => { op = 'insert'; payload = d; return builder; };
   builder.update = (d: any) => { op = 'update'; payload = d; return builder; };
   builder.delete = () => { op = 'delete'; return builder; };
@@ -257,7 +264,7 @@ function createQuery(table: string) {
 
   builder.then = (resolve: any, reject: any) => execute().then(resolve, reject);
 
-  async function execute(): Promise<{ data: any; error: null; count: number }> {
+  async function execute(): Promise<{ data: any; error: { message: string } | null; count: number }> {
     try {
       const endpoint = TABLE_ENDPOINTS[table] || table;
       if (op === 'insert') {
@@ -362,7 +369,7 @@ function createQuery(table: string) {
       if (singleMode) return { data: data[0] ?? null, error: null, count: data.length };
       return { data, error: null, count: data.length };
     } catch (e: any) {
-      return { data: null, error: null, count: 0 };
+      return { data: null, error: { message: e?.message || 'Error de conexión con el servidor' }, count: 0 };
     }
   }
 
@@ -395,11 +402,11 @@ export const supabase = {
         return { data: { user: null, session: null }, error: { message: e.message } };
       }
     },
-    async signUp(creds: { email: string; password: string; options?: { data?: any } }) {
+    async signUp(creds: { email?: string; password: string; options?: { data?: any } }) {
       try {
         const data = creds.options?.data || {};
         const role = (ROLE_MAP_REVERSE[data.role as Role] ?? 'vendedor');
-        const user = await api<any>('/users', { method: 'POST', body: JSON.stringify({ email: creds.email, password: creds.password, name: data.full_name || 'Usuario', lastName: data.last_name || '', phone: data.phone || '', role }) });
+        const user = await api<any>('/users', { method: 'POST', body: JSON.stringify({ email: creds.email, password: creds.password, name: data.full_name || 'Usuario', lastName: data.last_name || '', phone: data.phone || '', role, documentId: data.document_id || undefined }) });
         return { data: { user: { id: user.id } }, error: null };
       } catch (e: any) {
         return { data: { user: null }, error: { message: e.message } };

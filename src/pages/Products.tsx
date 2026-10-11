@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
+import { Pager } from '@/components/ui/Pager';
 import { useToast } from '@/components/ui/Toast';
 
 const emptyForm = {
@@ -16,6 +17,8 @@ const emptyForm = {
 
 // Lista fija de "Uso" para subcategorizar los productos.
 const USES = ['Facial', 'Corporal', 'Capilar', 'Manos/Uñas', 'Maquillaje', 'Otro'];
+
+const PAGE_SIZE = 12;
 
 // Estado de caducidad de un producto (null si no tiene fecha).
 function expiryStatus(date: string | null): { label: string; cls: string } | null {
@@ -57,8 +60,10 @@ export function Products() {
   const [deleting, setDeleting] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [showCatDropdown, setShowCatDropdown] = useState(false);
+  const [page, setPage] = useState(1);
 
   useEffect(() => { loadProducts(); loadSuppliers(); }, []);
+  useEffect(() => { setPage(1); }, [search, categoryFilter, brandFilter, useFilter, stockFilter, viewMode]);
 
   const loadProducts = async () => {
     setLoading(true);
@@ -123,7 +128,7 @@ export function Products() {
     const cost = parseFloat(val) || 0;
     const margin = parseFloat(form.margin_pct) || 0;
     const sale = cost > 0 && margin > 0 ? cost + margin : form.sale_price;
-    setForm({ ...form, cost_price: val, sale_price: sale || form.sale_price });
+    setForm({ ...form, cost_price: val, sale_price: String(sale || form.sale_price) });
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,6 +189,8 @@ export function Products() {
   const activeFilters = categoryFilter !== 'all' || brandFilter !== 'all' || useFilter !== 'all' || stockFilter !== 'all';
   const lowStockCount = products.filter((p) => p.stock <= p.min_stock && p.stock > 0).length;
   const outOfStockCount = products.filter((p) => p.stock === 0).length;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -255,7 +262,7 @@ export function Products() {
         <div className="card p-12 text-center"><Package size={48} className="mx-auto text-neutral-300 dark:text-neutral-600 mb-3" /><p className="text-neutral-400 dark:text-neutral-500">No se encontraron productos</p></div>
       ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map((product) => {
+          {paged.map((product) => {
             const stockLevel = product.stock === 0 ? 'out' : product.stock <= product.min_stock ? 'low' : 'ok';
             const margin = product.cost_price > 0 ? (product.sale_price - product.cost_price) : 0;
             const exp = expiryStatus(product.expiry_date);
@@ -315,7 +322,7 @@ export function Products() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-              {filtered.map((product) => {
+              {paged.map((product) => {
                 const stockLevel = product.stock === 0 ? 'out' : product.stock <= product.min_stock ? 'low' : 'ok';
                 const exp = expiryStatus(product.expiry_date);
                 return (
@@ -347,6 +354,8 @@ export function Products() {
           </table>
         </div>
       )}
+
+      <Pager page={page} totalPages={totalPages} onChange={setPage} />
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar producto' : 'Nuevo producto'} size="lg">
         <form onSubmit={handleSave} className="space-y-4">
