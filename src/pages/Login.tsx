@@ -1,15 +1,26 @@
 import { useState } from 'react';
-import { Sparkles, Mail, Lock, User, Loader2, Eye, EyeOff, Sun, Moon } from 'lucide-react';
+import { Sparkles, Mail, Lock, Loader2, Eye, EyeOff, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 
+// TEMPORAL: acceso rápido de pruebas. Poner en false para ocultar al terminar las pruebas.
+const SHOW_QUICK_LOGIN = true;
+
+// Foto de la perfumería para el panel de inicio (pegar URL cuando la envíen).
+const STORE_PHOTO_URL = '';
+
+const QUICK_USERS = [
+  { title: 'Administrador', who: 'Admin Camila', email: 'admin@comercialcamila.com', password: 'admin123' },
+  { title: 'Vendedora', who: 'Daniela Rojas', email: 'daniela@comercialcamila.com', password: 'vendedora123' },
+  { title: 'Vendedora', who: 'Carolina Méndez', email: 'carolina@comercialcamila.com', password: 'vendedora123' },
+  { title: 'Inventarista', who: 'Luis Gómez', email: 'luis@comercialcamila.com', password: 'inventarista123' },
+];
+
 export function Login() {
-  const { signIn, signUp } = useAuth();
+  const { signIn } = useAuth();
   const { theme, toggle } = useTheme();
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,19 +29,16 @@ export function Login() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    const { error } = await signIn(email, password);
+    if (error) setError(error);
+    setLoading(false);
+  };
 
-    if (mode === 'signin') {
-      const { error } = await signIn(email, password);
-      if (error) setError(error);
-    } else {
-      if (password.length < 6) {
-        setError('La contraseña debe tener al menos 6 caracteres.');
-        setLoading(false);
-        return;
-      }
-      const { error } = await signUp(email, password, fullName);
-      if (error) setError(error);
-    }
+  const quickLogin = async (u: (typeof QUICK_USERS)[number]) => {
+    setLoading(true);
+    setError(null);
+    const { error } = await signIn(u.email, u.password);
+    if (error) setError(error);
     setLoading(false);
   };
 
@@ -38,6 +46,9 @@ export function Login() {
     <div className="min-h-screen flex">
       {/* Left panel - branding */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-primary-600 via-primary-700 to-secondary-700">
+        {STORE_PHOTO_URL && (
+          <img src={STORE_PHOTO_URL} alt="Perfumería" className="absolute inset-0 w-full h-full object-cover opacity-40" />
+        )}
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-20 left-20 w-72 h-72 bg-white rounded-full blur-3xl" />
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-secondary-300 rounded-full blur-3xl" />
@@ -59,19 +70,6 @@ export function Login() {
             Gestiona tus productos, controla tu inventario y registra tus ventas
             de forma rápida y sencilla con lector de código de barras integrado.
           </p>
-          <div className="mt-12 space-y-4">
-            {[
-              'Control de inventario en tiempo real',
-              'Ventas rápidas con código de barras',
-              'Reportes y estadísticas detalladas',
-              'Gestión de clientes y proveedores',
-            ].map((item) => (
-              <div key={item} className="flex items-center gap-3 text-primary-50">
-                <div className="w-6 h-6 bg-white/15 rounded-full flex items-center justify-center text-xs">✓</div>
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -96,39 +94,22 @@ export function Login() {
           </div>
 
           <h2 className="text-2xl font-semibold text-neutral-800 dark:text-neutral-100 mb-1">
-            {mode === 'signin' ? 'Bienvenido de nuevo' : 'Crear cuenta'}
+            Bienvenido de nuevo
           </h2>
           <p className="text-neutral-400 dark:text-neutral-500 text-sm mb-8">
-            {mode === 'signin' ? 'Ingresa tus credenciales para continuar' : 'Completa los datos para registrarte'}
+            Ingresa tus credenciales para continuar
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'signup' && (
-              <div>
-                <label className="label">Nombre completo</label>
-                <div className="relative">
-                  <User size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Tu nombre"
-                    className="input pl-11"
-                    required
-                  />
-                </div>
-              </div>
-            )}
-
             <div>
-              <label className="label">Correo electrónico</label>
+              <label className="label">Correo o teléfono</label>
               <div className="relative">
                 <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
                 <input
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="correo@ejemplo.com"
+                  placeholder="correo@ejemplo.com o 70000000"
                   className="input pl-11"
                   required
                 />
@@ -165,22 +146,29 @@ export function Login() {
 
             <button type="submit" className="btn-primary w-full py-3" disabled={loading}>
               {loading && <Loader2 size={18} className="animate-spin" />}
-              {mode === 'signin' ? 'Iniciar sesión' : 'Registrarse'}
+              Iniciar sesión
             </button>
           </form>
 
-          <p className="text-center text-sm text-neutral-400 dark:text-neutral-500 mt-6">
-            {mode === 'signin' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}{' '}
-            <button
-              onClick={() => {
-                setMode(mode === 'signin' ? 'signup' : 'signin');
-                setError(null);
-              }}
-              className="text-primary-600 dark:text-primary-400 font-medium hover:underline"
-            >
-              {mode === 'signin' ? 'Regístrate' : 'Inicia sesión'}
-            </button>
-          </p>
+          {SHOW_QUICK_LOGIN && (
+            <div className="mt-8">
+              <p className="text-xs text-neutral-400 dark:text-neutral-500 text-center mb-3">Acceso rápido (pruebas)</p>
+              <div className="grid grid-cols-2 gap-2">
+                {QUICK_USERS.map((u) => (
+                  <button
+                    key={u.email}
+                    type="button"
+                    onClick={() => quickLogin(u)}
+                    disabled={loading}
+                    className="text-left p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:border-primary-300 hover:bg-primary-50/50 dark:hover:bg-primary-900/20 transition disabled:opacity-40"
+                  >
+                    <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{u.title}</p>
+                    <p className="text-[11px] text-neutral-400 dark:text-neutral-500 truncate">{u.who}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

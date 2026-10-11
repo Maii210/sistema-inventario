@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/Toast';
+import { soloLetras, soloDigitos } from '@/lib/validation';
 
 const emptyForm = { name: '', last_name: '', document_id: '', email: '', phone: '', address: '', notes: '' };
 
@@ -76,17 +77,6 @@ export function Clients() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-
-    const duplicate = clients.find(
-      (c) => c.name.toLowerCase() === form.name.toLowerCase() &&
-             c.last_name?.toLowerCase() === form.last_name.toLowerCase() &&
-             c.id !== editing?.id
-    );
-    if (duplicate) {
-      show('Ya existe un cliente con ese nombre y apellido', 'error');
-      setSaving(false);
-      return;
-    }
 
     const payload = {
       name: form.name,
@@ -196,13 +186,13 @@ export function Clients() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar cliente' : 'Nuevo cliente'}>
         <form onSubmit={handleSave} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Nombre *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" required /></div>
-            <div><label className="label">Apellido *</label><input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} className="input" required /></div>
+            <div><label className="label">Nombre *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: soloLetras(e.target.value) })} className="input" required /></div>
+            <div><label className="label">Apellido *</label><input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: soloLetras(e.target.value) })} className="input" required /></div>
           </div>
-          <div><label className="label">Documento de identidad</label><input value={form.document_id} onChange={(e) => setForm({ ...form, document_id: e.target.value })} className="input" placeholder="CI, NIT, etc." /></div>
+          <div><label className="label">Carnet (opcional)</label><input value={form.document_id} onChange={(e) => setForm({ ...form, document_id: e.target.value })} className="input" placeholder="12345678" /></div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className="label">Email</label><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" /></div>
-            <div><label className="label">Teléfono</label><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" /></div>
+            <div><label className="label">Teléfono</label><input value={form.phone} onChange={(e) => setForm({ ...form, phone: soloDigitos(e.target.value) })} className="input" /></div>
           </div>
           <div><label className="label">Dirección</label><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input" /></div>
           <div><label className="label">Notas</label><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input min-h-[60px] resize-none" /></div>

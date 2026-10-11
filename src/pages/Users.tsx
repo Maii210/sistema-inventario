@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/supabase';
+import { soloLetras, soloDigitos } from '@/lib/validation';
 
 const roleLabels: Record<Role, string> = {
   vendedor: 'Vendedor',
@@ -19,7 +20,7 @@ const roleColors: Record<Role, string> = {
   superadmin: 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300',
 };
 
-const emptyForm = { full_name: '', last_name: '', email: '', phone: '', password: '', role: 'vendedor' as Role, active: true };
+const emptyForm = { full_name: '', last_name: '', email: '', phone: '', document_id: '', password: '', role: 'vendedor' as Role, active: true };
 
 export function Users() {
   const { user } = useAuth();
@@ -63,8 +64,9 @@ export function Users() {
     setForm({
       full_name: profile.full_name,
       last_name: profile.last_name,
-      email: '',
+      email: profile.email ?? '',
       phone: profile.phone ?? '',
+      document_id: profile.document_id ?? '',
       password: '',
       role: profile.role,
       active: profile.active,
@@ -88,7 +90,15 @@ export function Users() {
     }
 
     if (editing) {
-      const { error } = await supabase.from('profiles').update({ full_name: form.full_name, last_name: form.last_name, phone: form.phone, role: form.role, active: form.active }).eq('id', editing.id);
+      const { error } = await supabase.from('profiles').update({
+        full_name: form.full_name,
+        last_name: form.last_name,
+        phone: form.phone,
+        email: form.email || null,
+        document_id: form.document_id || null,
+        role: form.role,
+        active: form.active,
+      }).eq('id', editing.id);
       if (error) show(error.message, 'error');
       else { show('Usuario actualizado'); setModalOpen(false); loadUsers(); }
     } else {
@@ -100,7 +110,7 @@ export function Users() {
       const { error: signUpError } = await supabase.auth.signUp({
         email: form.email || undefined,
         password: form.password || 'default123',
-        options: { data: { full_name: form.full_name, last_name: form.last_name, phone: form.phone, role: form.role } },
+        options: { data: { full_name: form.full_name, last_name: form.last_name, phone: form.phone, document_id: form.document_id, role: form.role } },
       });
       if (signUpError) { show(signUpError.message, 'error'); setSaving(false); return; }
       show('Usuario creado correctamente');
@@ -205,31 +215,33 @@ export function Users() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Nombre *</label>
-              <input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="input" required />
+              <input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: soloLetras(e.target.value) })} className="input" required />
             </div>
             <div>
               <label className="label">Apellido *</label>
-              <input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} className="input" required />
+              <input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: soloLetras(e.target.value) })} className="input" required />
             </div>
+          </div>
+          <div>
+            <label className="label">C.I. (opcional)</label>
+            <input value={form.document_id} onChange={(e) => setForm({ ...form, document_id: e.target.value })} className="input" placeholder="12345678" />
           </div>
           <div>
             <label className="label">Teléfono *</label>
             <div className="relative">
               <Phone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input pl-11" required minLength={8} placeholder="70000000" />
+              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: soloDigitos(e.target.value) })} className="input pl-11" required minLength={8} placeholder="70000000" />
             </div>
           </div>
+          <div>
+            <label className="label">Correo electrónico (opcional)</label>
+            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" placeholder="correo@ejemplo.com" />
+          </div>
           {!editing && (
-            <>
-              <div>
-                <label className="label">Correo electrónico (opcional)</label>
-                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" placeholder="correo@ejemplo.com" />
-              </div>
-              <div>
-                <label className="label">Contraseña</label>
-                <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="input" minLength={6} placeholder="Si se deja vacío se usará 'default123'" />
-              </div>
-            </>
+            <div>
+              <label className="label">Contraseña</label>
+              <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="input" minLength={6} placeholder="Si se deja vacío se usará 'default123'" />
+            </div>
           )}
           <div>
             <label className="label">Rol *</label>
@@ -293,6 +305,8 @@ export function Users() {
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-neutral-400">Teléfono</span><span className="text-neutral-700 dark:text-neutral-200">{viewUser.phone || '-'}</span></div>
+              <div className="flex justify-between"><span className="text-neutral-400">Correo</span><span className="text-neutral-700 dark:text-neutral-200">{viewUser.email || '-'}</span></div>
+              <div className="flex justify-between"><span className="text-neutral-400">C.I.</span><span className="text-neutral-700 dark:text-neutral-200">{viewUser.document_id || '-'}</span></div>
               <div className="flex justify-between"><span className="text-neutral-400">Estado</span><span className={viewUser.active ? 'text-success-600' : 'text-error-600'}>{viewUser.active ? 'Activo' : 'Inactivo'}</span></div>
               <div className="flex justify-between"><span className="text-neutral-400">Registro</span><span className="text-neutral-700 dark:text-neutral-200">{formatDate(viewUser.created_at)}</span></div>
             </div>

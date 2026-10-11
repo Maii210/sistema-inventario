@@ -4,6 +4,7 @@ import { supabase, Supplier, Product, formatDate } from '@/lib/supabase';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/Toast';
+import { soloLetras, soloDigitos } from '@/lib/validation';
 
 const emptyForm = { name: '', contact_name: '', email: '', phone: '', address: '', notes: '' };
 
@@ -157,11 +158,11 @@ export function Suppliers() {
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar proveedor' : 'Nuevo proveedor'}>
         <form onSubmit={handleSave} className="space-y-4">
-          <div><label className="label">Nombre / Empresa *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" required /></div>
-          <div><label className="label">Persona de contacto</label><input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} className="input" /></div>
+          <div><label className="label">Nombre / Empresa *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: soloLetras(e.target.value) })} className="input" required /></div>
+          <div><label className="label">Persona de contacto</label><input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: soloLetras(e.target.value) })} className="input" /></div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className="label">Email</label><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" /></div>
-            <div><label className="label">Teléfono</label><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" /></div>
+            <div><label className="label">Teléfono</label><input value={form.phone} onChange={(e) => setForm({ ...form, phone: soloDigitos(e.target.value) })} className="input" /></div>
           </div>
           <div><label className="label">Dirección</label><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input" /></div>
           <div><label className="label">Notas</label><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input min-h-[60px] resize-none" /></div>
