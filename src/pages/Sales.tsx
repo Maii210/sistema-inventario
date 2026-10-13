@@ -128,8 +128,8 @@ export function Sales() {
     show('Cliente creado');
   };
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     const [prodRes, clientRes, sellerRes] = await Promise.all([
       supabase.from('products').select('*').order('name'),
       supabase.from('clients').select('*').order('name'),
@@ -141,7 +141,7 @@ export function Sales() {
     setSellers(activeSellers);
     // Por defecto, la vendedora es el usuario que inició sesión.
     setSelectedSeller((prev) => prev || user?.id || '');
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   const filteredProducts = products.filter((p) => !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.barcode?.includes(search) || p.brand?.toLowerCase().includes(search.toLowerCase()));
@@ -238,8 +238,15 @@ export function Sales() {
     const { data: fullSale } = await supabase.from('sales').select('*, client:clients(*), seller:profiles(*), sale_items(*)').eq('id', saleData.id).single();
     setLastSale(fullSale as Sale);
     setReceiptOpen(true);
+    const soldItems = cart.filter((item) => !item.isExternal);
+    if (soldItems.length) {
+      setProducts((prev) => prev.map((p) => {
+        const sold = soldItems.find((item) => item.product.id === p.id);
+        return sold ? { ...p, stock: Math.max(p.stock - sold.quantity, 0) } : p;
+      }));
+    }
     setCart([]); setSelectedClient(''); setGlobalDiscount(0); setNotes(''); setQrImage('');
-    loadData();
+    loadData(true);
     show('Venta completada');
     setCompleting(false);
   };
