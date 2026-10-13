@@ -7,7 +7,6 @@ import {
   TrendingUp,
   AlertTriangle,
   Receipt,
-  Sparkles,
 } from 'lucide-react';
 import {
   BarChart,
@@ -28,10 +27,6 @@ import { useAuth } from '@/context/AuthContext';
 type Period = 'today' | 'week' | 'month' | 'year';
 
 const PIE_COLORS = ['#ec4899', '#d2684f', '#8b5cf6', '#22c55e', '#f59e0b'];
-
-// Logo de la empresa y crédito (completar cuando el usuario envíe el material).
-const COMPANY_LOGO_URL = '';
-const DESARROLLADO_POR = 'Desarrollado por';
 
 export function Dashboard() {
   const { profile } = useAuth();
@@ -334,15 +329,6 @@ export function Dashboard() {
             </div>
           )}
         </div>
-      </div>
-
-      <div className="flex items-center justify-center gap-2 pt-4 pb-2 text-xs text-neutral-400 dark:text-neutral-500">
-        {COMPANY_LOGO_URL ? (
-          <img src={COMPANY_LOGO_URL} alt="Logo" className="h-6 object-contain" />
-        ) : (
-          <Sparkles size={16} />
-        )}
-        <span>{DESARROLLADO_POR}</span>
       </div>
     </div>
   );

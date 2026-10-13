@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Mail, Lock, Loader2, Eye, EyeOff, Sun, Moon } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -54,15 +54,6 @@ export function Login() {
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-secondary-300 rounded-full blur-3xl" />
         </div>
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-14 h-14 bg-white/15 backdrop-blur rounded-2xl flex items-center justify-center">
-              <Sparkles size={28} />
-            </div>
-            <div>
-              <h1 className="text-3xl font-display font-bold">Camila</h1>
-              <p className="text-primary-100 text-sm">Belleza & Cuidado Personal</p>
-            </div>
-          </div>
           <h2 className="text-4xl font-display font-bold leading-tight mb-4">
             Sistema de Inventario<br />y Punto de Venta
           </h2>
@@ -82,17 +73,11 @@ export function Login() {
         >
           {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
         </button>
+        <div className="absolute bottom-5 right-5 flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-500 pointer-events-none select-none">
+          <span>Desarrollado por</span>
+          <img src="/logo-afr.png" alt="AFR" className="h-5 object-contain" />
+        </div>
         <div className="w-full max-w-sm">
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center text-white">
-              <Sparkles size={24} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-display font-bold text-neutral-800 dark:text-neutral-100">Camila</h1>
-              <p className="text-neutral-400 dark:text-neutral-500 text-sm">Belleza & Cuidado Personal</p>
-            </div>
-          </div>
-
           <h2 className="text-2xl font-semibold text-neutral-800 dark:text-neutral-100 mb-1">
             Bienvenido de nuevo
           </h2>

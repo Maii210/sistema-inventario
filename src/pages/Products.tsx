@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
-import { Plus, Search, ScanLine, Edit2, Trash2, Package, AlertTriangle, Loader2, Filter, X, Camera, ChevronDown, LayoutGrid, List } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { Plus, Search, ScanLine, Edit2, Trash2, Package, AlertTriangle, Loader2, Filter, X, ChevronDown, LayoutGrid, List } from 'lucide-react';
 import { supabase, Product, Supplier, ProductCategory, formatCurrency, formatDate } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { Modal } from '@/components/ui/Modal';
@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/Toast';
 const emptyForm = {
   name: '', barcode: '', category: '', brand: '', description: '',
   cost_price: '', sale_price: '', stock: '', min_stock: '5',
-  supplier_id: '', active: true, image_url: '', margin_pct: '',
+  supplier_id: '', active: true, margin_pct: '',
   use: '', expiry_date: '',
 };
 
@@ -35,7 +35,6 @@ export function Products() {
   const { profile } = useAuth();
   const { show } = useToast();
   const canEdit = profile?.role === 'admin' || profile?.role === 'superadmin';
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -111,7 +110,7 @@ export function Products() {
       cost_price: String(product.cost_price), sale_price: String(product.sale_price),
       stock: String(product.stock), min_stock: String(product.min_stock),
       supplier_id: product.supplier_id ?? '', active: product.active,
-      image_url: product.image_url ?? '', margin_pct: '',
+      margin_pct: '',
       use: product.use ?? '', expiry_date: product.expiry_date ? product.expiry_date.slice(0, 10) : '',
     });
     setModalOpen(true);
@@ -131,15 +130,6 @@ export function Products() {
     setForm({ ...form, cost_price: val, sale_price: String(sale || form.sale_price) });
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { show('La imagen no debe superar 2MB', 'error'); return; }
-    const reader = new FileReader();
-    reader.onload = (ev) => setForm({ ...form, image_url: ev.target?.result as string });
-    reader.readAsDataURL(file);
-  };
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -153,7 +143,6 @@ export function Products() {
       cost_price: parseFloat(form.cost_price) || 0, sale_price: parseFloat(form.sale_price) || 0,
       stock: parseInt(form.stock) || 0, min_stock: parseInt(form.min_stock) || 0,
       supplier_id: form.supplier_id || null, active: form.active,
-      image_url: form.image_url || null,
       use: form.use || null,
       expiry_date: form.expiry_date ? new Date(form.expiry_date).toISOString() : null,
     };
@@ -269,11 +258,7 @@ export function Products() {
             return (
               <div key={product.id} className="card p-5 hover:shadow-glow transition-all group">
                 <div className="flex items-start justify-between mb-3">
-                  {product.image_url ? (
-                    <img src={product.image_url} alt={product.name} className="w-12 h-12 rounded-xl object-cover" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-100 to-secondary-100 dark:from-primary-900/40 dark:to-secondary-900/40 flex items-center justify-center text-primary-600 dark:text-primary-400"><Package size={24} /></div>
-                  )}
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-100 to-secondary-100 dark:from-primary-900/40 dark:to-secondary-900/40 flex items-center justify-center text-primary-600 dark:text-primary-400"><Package size={24} /></div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
                     {canEdit && (
                       <>
@@ -363,16 +348,6 @@ export function Products() {
             <div className="sm:col-span-2">
               <label className="label">Nombre *</label>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" required />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="label">Imagen del producto</label>
-              <div className="flex items-center gap-4">
-                {form.image_url && <img src={form.image_url} alt="Preview" className="w-16 h-16 rounded-lg object-cover border border-neutral-200 dark:border-neutral-700" />}
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="btn-secondary text-sm"><Camera size={16} /> Subir imagen</button>
-                {form.image_url && <button type="button" onClick={() => setForm({ ...form, image_url: '' })} className="text-xs text-error-500 hover:text-error-600">Quitar</button>}
-              </div>
             </div>
 
             <div>

@@ -65,7 +65,6 @@ export interface Product {
   stock: number;
   min_stock: number;
   supplier_id: string | null;
-  image_url: string | null;
   use: string | null;
   expiry_date: string | null;
   active: boolean;
@@ -173,7 +172,7 @@ function mapSupplierReverse(s: Partial<Supplier>) {
   return r;
 }
 function mapProduct(p: any): Product {
-  return { id: p.id, name: p.name, barcode: p.barcode || null, category: p.category || '', brand: p.brand || null, description: p.description || null, cost_price: p.purchasePrice ?? 0, sale_price: p.price ?? 0, stock: p.stock ?? 0, min_stock: p.minStock ?? 0, supplier_id: p.supplierId || null, image_url: p.image || null, use: p.use || null, expiry_date: p.expiryDate || null, active: true, created_at: p.createdAt, updated_at: p.updatedAt, supplier: p.supplier ? mapSupplier(p.supplier) : undefined };
+  return { id: p.id, name: p.name, barcode: p.barcode || null, category: p.category || '', brand: p.brand || null, description: p.description || null, cost_price: p.purchasePrice ?? 0, sale_price: p.price ?? 0, stock: p.stock ?? 0, min_stock: p.minStock ?? 0, supplier_id: p.supplierId || null, use: p.use || null, expiry_date: p.expiryDate || null, active: true, created_at: p.createdAt, updated_at: p.updatedAt, supplier: p.supplier ? mapSupplier(p.supplier) : undefined };
 }
 function mapProductReverse(p: Partial<Product>) {
   const r: any = {};
@@ -187,7 +186,6 @@ function mapProductReverse(p: Partial<Product>) {
   if (p.description !== undefined) r.description = p.description;
   if (p.barcode !== undefined) r.barcode = p.barcode;
   if (p.supplier_id !== undefined) r.supplierId = p.supplier_id;
-  if (p.image_url !== undefined) r.image = p.image_url;
   if (p.use !== undefined) r.use = p.use;
   if (p.expiry_date !== undefined) r.expiryDate = p.expiry_date;
   return r;
