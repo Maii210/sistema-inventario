@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Lock, Loader2, Eye, EyeOff, Sun, Moon } from 'lucide-react';
+import { Sparkles, Mail, Lock, Loader2, Eye, EyeOff, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -54,6 +54,15 @@ export function Login() {
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-secondary-300 rounded-full blur-3xl" />
         </div>
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-14 h-14 bg-white/15 backdrop-blur rounded-2xl flex items-center justify-center">
+              <Sparkles size={28} />
+            </div>
+            <div>
+              <h1 className="text-3xl font-display font-bold">Camila</h1>
+              <p className="text-primary-100 text-sm">Belleza & Cuidado Personal</p>
+            </div>
+          </div>
           <h2 className="text-4xl font-display font-bold leading-tight mb-4">
             Sistema de Inventario<br />y Punto de Venta
           </h2>
