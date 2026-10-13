@@ -6,7 +6,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/Toast';
 import { soloLetras, soloDigitos } from '@/lib/validation';
 
-const emptyForm = { name: '', contact_name: '', email: '', phone: '', address: '', notes: '' };
+const emptyForm = { name: '', contact_name: '', nit: '', email: '', phone: '', address: '', notes: '' };
 
 export function Suppliers() {
   const { show } = useToast();
@@ -40,7 +40,8 @@ export function Suppliers() {
       (s) => !search ||
         s.name.toLowerCase().includes(search.toLowerCase()) ||
         s.contact_name?.toLowerCase().includes(search.toLowerCase()) ||
-        s.email?.toLowerCase().includes(search.toLowerCase())
+        s.email?.toLowerCase().includes(search.toLowerCase()) ||
+        s.nit?.includes(search)
     );
   }, [suppliers, search]);
 
@@ -48,7 +49,7 @@ export function Suppliers() {
 
   const openEdit = (supplier: Supplier) => {
     setEditing(supplier);
-    setForm({ name: supplier.name, contact_name: supplier.contact_name ?? '', email: supplier.email ?? '', phone: supplier.phone ?? '', address: supplier.address ?? '', notes: supplier.notes ?? '' });
+    setForm({ name: supplier.name, contact_name: supplier.contact_name ?? '', nit: supplier.nit ?? '', email: supplier.email ?? '', phone: supplier.phone ?? '', address: supplier.address ?? '', notes: supplier.notes ?? '' });
     setModalOpen(true);
   };
 
@@ -65,7 +66,7 @@ export function Suppliers() {
       return;
     }
 
-    const payload = { name: form.name, contact_name: form.contact_name || null, email: form.email || null, phone: form.phone || null, address: form.address || null, notes: form.notes || null };
+    const payload = { name: form.name, contact_name: form.contact_name || null, nit: form.nit || null, email: form.email || null, phone: form.phone || null, address: form.address || null, notes: form.notes || null };
     let hasError = false;
     if (editing) {
       const { error } = await supabase.from('suppliers').update(payload).eq('id', editing.id);
@@ -133,6 +134,7 @@ export function Suppliers() {
                 </div>
                 <h3 className="font-semibold text-neutral-800 dark:text-neutral-100">{supplier.name}</h3>
                 {supplier.contact_name && <p className="text-sm text-neutral-400 dark:text-neutral-500">Contacto: {supplier.contact_name}</p>}
+                {supplier.nit && <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">NIT: {supplier.nit}</p>}
                 <div className="space-y-1.5 mt-3">
                   {supplier.email && <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400"><Mail size={14} /> <span className="truncate">{supplier.email}</span></div>}
                   {supplier.phone && <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400"><Phone size={14} /> {supplier.phone}</div>}
@@ -156,9 +158,20 @@ export function Suppliers() {
         </div>
       )}
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar proveedor' : 'Nuevo proveedor'}>
-        <form onSubmit={handleSave} className="space-y-4">
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editing ? 'Editar proveedor' : 'Nuevo proveedor'}
+        footer={
+          <>
+            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Cancelar</button>
+            <button type="submit" form="supplier-form" className="btn-primary" disabled={saving}>{saving && <Loader2 size={16} className="animate-spin" />}{editing ? 'Guardar' : 'Crear'}</button>
+          </>
+        }
+      >
+        <form id="supplier-form" onSubmit={handleSave} className="space-y-4">
           <div><label className="label">Nombre / Empresa *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: soloLetras(e.target.value) })} className="input" required /></div>
+          <div><label className="label">NIT (opcional)</label><input value={form.nit} onChange={(e) => setForm({ ...form, nit: e.target.value })} className="input" placeholder="Si no emite factura, déjalo vacío" /></div>
           <div><label className="label">Persona de contacto</label><input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: soloLetras(e.target.value) })} className="input" /></div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className="label">Email</label><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" /></div>
@@ -166,10 +179,6 @@ export function Suppliers() {
           </div>
           <div><label className="label">Dirección</label><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input" /></div>
           <div><label className="label">Notas</label><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input min-h-[60px] resize-none" /></div>
-          <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Cancelar</button>
-            <button type="submit" className="btn-primary" disabled={saving}>{saving && <Loader2 size={16} className="animate-spin" />}{editing ? 'Guardar' : 'Crear'}</button>
-          </div>
         </form>
       </Modal>
 
@@ -184,6 +193,7 @@ export function Suppliers() {
               </div>
             </div>
             <div className="space-y-2 text-sm">
+              {viewSupplier.nit && <div className="flex justify-between"><span className="text-neutral-400">NIT</span><span className="text-neutral-700 dark:text-neutral-200">{viewSupplier.nit}</span></div>}
               {viewSupplier.email && <div className="flex justify-between"><span className="text-neutral-400">Email</span><span className="text-neutral-700 dark:text-neutral-200">{viewSupplier.email}</span></div>}
               {viewSupplier.phone && <div className="flex justify-between"><span className="text-neutral-400">Teléfono</span><span className="text-neutral-700 dark:text-neutral-200">{viewSupplier.phone}</span></div>}
               {viewSupplier.address && <div className="flex justify-between"><span className="text-neutral-400">Dirección</span><span className="text-neutral-700 dark:text-neutral-200">{viewSupplier.address}</span></div>}

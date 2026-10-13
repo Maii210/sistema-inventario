@@ -44,6 +44,7 @@ export interface Supplier {
   id: string;
   name: string;
   contact_name: string | null;
+  nit: string | null;
   email: string | null;
   phone: string | null;
   address: string | null;
@@ -159,12 +160,13 @@ function mapClientReverse(c: Partial<Client>) {
   return r;
 }
 function mapSupplier(s: any): Supplier {
-  return { id: s.id, name: s.name, contact_name: s.contactName || null, email: s.email || null, phone: s.phone || null, address: s.address || null, notes: s.notes || null, created_at: s.createdAt };
+  return { id: s.id, name: s.name, contact_name: s.contactName || null, nit: s.nit || null, email: s.email || null, phone: s.phone || null, address: s.address || null, notes: s.notes || null, created_at: s.createdAt };
 }
 function mapSupplierReverse(s: Partial<Supplier>) {
   const r: any = {};
   if (s.name !== undefined) r.name = s.name;
   if (s.contact_name !== undefined) r.contactName = s.contact_name;
+  if (s.nit !== undefined) r.nit = s.nit;
   if (s.email !== undefined) r.email = s.email;
   if (s.phone !== undefined) r.phone = s.phone;
   if (s.address !== undefined) r.address = s.address;

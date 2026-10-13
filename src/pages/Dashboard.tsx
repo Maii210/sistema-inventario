@@ -134,6 +134,13 @@ export function Dashboard() {
     setLoading(false);
   };
 
+  const periodLabels: Record<Period, string> = {
+    today: 'Hoy',
+    week: 'Última semana',
+    month: 'Este mes',
+    year: 'Este año',
+  };
+
   const statCards = useMemo(() => [
     {
       label: 'Ventas',
@@ -143,7 +150,7 @@ export function Dashboard() {
       sub: `${stats.todayCount} transacciones`,
     },
     {
-      label: 'Ventas del período',
+      label: `Ventas · ${periodLabels[period]}`,
       value: formatCurrency(stats.monthTotal),
       icon: <TrendingUp size={22} />,
       color: 'from-success-500 to-success-600',
@@ -163,14 +170,7 @@ export function Dashboard() {
       color: 'from-secondary-500 to-secondary-600',
       sub: 'Total de clientes',
     },
-  ], [stats]);
-
-  const periodLabels: Record<Period, string> = {
-    today: 'Hoy',
-    week: 'Última semana',
-    month: 'Este mes',
-    year: 'Este año',
-  };
+  ], [stats, period]);
 
   if (loading) {
     return (

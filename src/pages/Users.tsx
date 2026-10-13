@@ -35,6 +35,8 @@ export function Users() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [hardDeleteId, setHardDeleteId] = useState<string | null>(null);
+  const [hardDeleting, setHardDeleting] = useState(false);
 
   useEffect(() => { loadUsers(); }, []);
 
@@ -120,7 +122,7 @@ export function Users() {
     setSaving(false);
   };
 
-  const handleDelete = async () => {
+  const handleDeactivate = async () => {
     if (!deleteId) return;
     setDeleting(true);
     const { error } = await supabase.from('profiles').update({ active: false }).eq('id', deleteId);
@@ -128,6 +130,16 @@ export function Users() {
     else { show('Usuario desactivado'); loadUsers(); }
     setDeleting(false);
     setDeleteId(null);
+  };
+
+  const handleHardDelete = async () => {
+    if (!hardDeleteId) return;
+    setHardDeleting(true);
+    const { error } = await supabase.from('profiles').delete().eq('id', hardDeleteId);
+    if (error) show(error.message, 'error');
+    else { show('Usuario eliminado'); loadUsers(); }
+    setHardDeleting(false);
+    setHardDeleteId(null);
   };
 
   return (
@@ -198,7 +210,10 @@ export function Users() {
                         <button onClick={() => setViewUser(u)} className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300" title="Ver"><Eye size={16} /></button>
                         <button onClick={() => openEdit(u)} className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300" title="Editar"><Edit2 size={16} /></button>
                         {u.id !== user?.id && u.active && (
-                          <button onClick={() => setDeleteId(u.id)} className="p-1.5 rounded-lg text-neutral-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-900/30 dark:hover:text-error-400" title="Eliminar"><Trash2 size={16} /></button>
+                          <button onClick={() => setDeleteId(u.id)} className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300" title="Desactivar"><XCircle size={16} /></button>
+                        )}
+                        {u.id !== user?.id && (
+                          <button onClick={() => setHardDeleteId(u.id)} className="p-1.5 rounded-lg text-neutral-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-900/30 dark:hover:text-error-400" title="Eliminar definitivo"><Trash2 size={16} /></button>
                         )}
                       </div>
                     </td>
@@ -210,8 +225,21 @@ export function Users() {
         </div>
       )}
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar usuario' : 'Nuevo usuario'}>
-        <form onSubmit={handleSave} className="space-y-4">
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editing ? 'Editar usuario' : 'Nuevo usuario'}
+        footer={
+          <>
+            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Cancelar</button>
+            <button type="submit" form="user-form" className="btn-primary" disabled={saving}>
+              {saving && <Loader2 size={16} className="animate-spin" />}
+              {editing ? 'Guardar' : 'Crear usuario'}
+            </button>
+          </>
+        }
+      >
+        <form id="user-form" onSubmit={handleSave} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Nombre *</label>
@@ -281,13 +309,6 @@ export function Users() {
               </div>
             </div>
           )}
-          <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Cancelar</button>
-            <button type="submit" className="btn-primary" disabled={saving}>
-              {saving && <Loader2 size={16} className="animate-spin" />}
-              {editing ? 'Guardar' : 'Crear usuario'}
-            </button>
-          </div>
         </form>
       </Modal>
 
@@ -314,7 +335,8 @@ export function Users() {
         )}
       </Modal>
 
-      <ConfirmDialog open={!!deleteId} title="Desactivar usuario" message="¿Seguro que deseas desactivar este usuario? No podrá iniciar sesión." confirmLabel="Desactivar" onConfirm={handleDelete} onCancel={() => setDeleteId(null)} loading={deleting} />
+      <ConfirmDialog open={!!deleteId} title="Desactivar usuario" message="¿Seguro que deseas desactivar este usuario? No podrá iniciar sesión." confirmLabel="Desactivar" onConfirm={handleDeactivate} onCancel={() => setDeleteId(null)} loading={deleting} />
+      <ConfirmDialog open={!!hardDeleteId} title="Eliminar usuario" message="¿Seguro que deseas eliminar este usuario de forma definitiva? Esta acción no se puede deshacer." confirmLabel="Eliminar" onConfirm={handleHardDelete} onCancel={() => setHardDeleteId(null)} loading={hardDeleting} />
     </div>
   );
 }
