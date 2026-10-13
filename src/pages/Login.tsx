@@ -84,7 +84,7 @@ export function Login() {
         </button>
         <div className="absolute bottom-5 right-5 flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-500 pointer-events-none select-none">
           <span>Desarrollado por</span>
-          <img src="/logo-afr.png" alt="AFR" className="h-7 object-contain" />
+          <img src="/logo-afr.png" alt="AFR" className="h-10 object-contain" />
         </div>
         <div className="w-full max-w-sm">
           <h2 className="text-2xl font-semibold text-neutral-800 dark:text-neutral-100 mb-1">
