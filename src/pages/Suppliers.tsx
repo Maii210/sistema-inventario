@@ -24,15 +24,15 @@ export function Suppliers() {
 
   useEffect(() => { loadData(); }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     const [supRes, prodRes] = await Promise.all([
       supabase.from('suppliers').select('*').order('name'),
       supabase.from('products').select('id, supplier_id, name, stock, sale_price'),
     ]);
     setSuppliers((supRes.data as Supplier[]) ?? []);
     setProducts((prodRes.data as Product[]) ?? []);
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   const filtered = useMemo(() => {
@@ -75,7 +75,7 @@ export function Suppliers() {
       const { error } = await supabase.from('suppliers').insert(payload);
       if (error) { show(error.message, 'error'); hasError = true; } else show('Proveedor creado');
     }
-    if (!hasError) { setModalOpen(false); loadData(); }
+    if (!hasError) { setModalOpen(false); loadData(true); }
     setSaving(false);
   };
 
@@ -84,7 +84,7 @@ export function Suppliers() {
     setDeleting(true);
     const { error } = await supabase.from('suppliers').delete().eq('id', deleteId);
     if (error) show(error.message, 'error');
-    else { show('Proveedor eliminado'); loadData(); }
+    else { show('Proveedor eliminado'); loadData(true); }
     setDeleting(false);
     setDeleteId(null);
   };

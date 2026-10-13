@@ -18,12 +18,12 @@ export function Cash() {
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
     const [cur, h] = await Promise.all([cashApi.current().catch(() => null), cashApi.history().catch(() => [])]);
     setSession(cur);
     setHistory(h);
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
   useEffect(() => { load(); }, []);
 
@@ -33,7 +33,7 @@ export function Cash() {
       await cashApi.open({ openingAmount: parseFloat(opening) || 0, openedById: user?.id, openedByName: profile?.full_name });
       show('Caja abierta');
       setOpening('');
-      load();
+      load(true);
     } catch (e: any) { show(e.message || 'Error al abrir caja', 'error'); }
     setBusy(false);
   };
@@ -45,7 +45,7 @@ export function Cash() {
       await cashApi.close(session.id, { countedAmount: parseFloat(counted) || 0, closedById: user?.id, closedByName: profile?.full_name, notes });
       show('Caja cerrada');
       setCounted(''); setNotes('');
-      load();
+      load(true);
     } catch (e: any) { show(e.message || 'Error al cerrar caja', 'error'); }
     setBusy(false);
   };

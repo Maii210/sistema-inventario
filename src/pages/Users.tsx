@@ -40,11 +40,11 @@ export function Users() {
 
   useEffect(() => { loadUsers(); }, []);
 
-  const loadUsers = async () => {
-    setLoading(true);
+  const loadUsers = async (silent = false) => {
+    if (!silent) setLoading(true);
     const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     setUsers((data as Profile[]) ?? []);
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   const filtered = useMemo(() => {
@@ -102,7 +102,7 @@ export function Users() {
         active: form.active,
       }).eq('id', editing.id);
       if (error) show(error.message, 'error');
-      else { show('Usuario actualizado'); setModalOpen(false); loadUsers(); }
+      else { show('Usuario actualizado'); setModalOpen(false); loadUsers(true); }
     } else {
       if (form.phone.length < 8) {
         show('El teléfono debe tener al menos 8 dígitos', 'error');
@@ -117,7 +117,7 @@ export function Users() {
       if (signUpError) { show(signUpError.message, 'error'); setSaving(false); return; }
       show('Usuario creado correctamente');
       setModalOpen(false);
-      loadUsers();
+      loadUsers(true);
     }
     setSaving(false);
   };
@@ -127,7 +127,7 @@ export function Users() {
     setDeleting(true);
     const { error } = await supabase.from('profiles').update({ active: false }).eq('id', deleteId);
     if (error) show(error.message, 'error');
-    else { show('Usuario desactivado'); loadUsers(); }
+    else { show('Usuario desactivado'); loadUsers(true); }
     setDeleting(false);
     setDeleteId(null);
   };
@@ -137,7 +137,7 @@ export function Users() {
     setHardDeleting(true);
     const { error } = await supabase.from('profiles').delete().eq('id', hardDeleteId);
     if (error) show(error.message, 'error');
-    else { show('Usuario eliminado'); loadUsers(); }
+    else { show('Usuario eliminado'); loadUsers(true); }
     setHardDeleting(false);
     setHardDeleteId(null);
   };
