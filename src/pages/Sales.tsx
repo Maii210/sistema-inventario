@@ -69,7 +69,7 @@ export function Sales() {
     const synthetic: Product = {
       id: `ext-${Date.now()}`, name, barcode: null, category: '', brand: 'Prestado', description: null,
       cost_price: cost, sale_price: price, stock: 999999, min_stock: 0, supplier_id: null,
-      image_url: null, use: null, expiry_date: null, active: true, created_at: '', updated_at: '',
+      use: null, expiry_date: null, active: true, created_at: '', updated_at: '',
     };
     setCart((prev) => [...prev, { product: synthetic, quantity: qty, unitPrice: price, discountAmt: 0, isExternal: true, externalCost: cost }]);
     setExtForm({ name: '', cost: '', price: '', qty: '1' });
@@ -279,7 +279,7 @@ export function Sales() {
                   return (
                     <button key={product.id} onClick={() => addToCart(product)} disabled={out}
                       className={`p-3 rounded-xl border text-left transition-all ${out ? 'border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 opacity-50 cursor-not-allowed' : 'border-neutral-100 dark:border-neutral-800 hover:border-primary-200 dark:hover:border-primary-700 hover:bg-primary-50/50 dark:hover:bg-primary-900/20 active:scale-[0.97]'}`}>
-                      {product.image_url ? <img src={product.image_url} alt={product.name} className="w-10 h-10 rounded-lg object-cover mb-2" /> : <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-100 to-secondary-100 dark:from-primary-900/40 dark:to-secondary-900/40 flex items-center justify-center text-primary-600 dark:text-primary-400 mb-2"><ShoppingCart size={18} /></div>}
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-100 to-secondary-100 dark:from-primary-900/40 dark:to-secondary-900/40 flex items-center justify-center text-primary-600 dark:text-primary-400 mb-2"><ShoppingCart size={18} /></div>
                       <p className="text-xs font-medium text-neutral-800 dark:text-neutral-100 line-clamp-2 leading-tight mb-1">{product.name}</p>
                       <p className="text-xs text-neutral-400 dark:text-neutral-500">{product.brand}</p>
                       <div className="flex items-center justify-between mt-2">
