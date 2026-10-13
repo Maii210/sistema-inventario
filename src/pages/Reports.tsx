@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { TrendingUp, DollarSign, ShoppingCart, Package, Calendar, BarChart3, Loader2, FileDown, ChevronLeft, ChevronRight, ArrowUpDown, Users, Truck } from 'lucide-react';
 import { supabase, Sale, Product, Client, Supplier, PaymentMethod, formatCurrency, formatDateTime, formatDate } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -23,10 +23,11 @@ export function Reports() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
-  useEffect(() => { loadData(); }, [startDate, endDate]);
+  const didLoadRef = useRef(false);
+  useEffect(() => { loadData(didLoadRef.current); didLoadRef.current = true; }, [startDate, endDate]);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     const start = new Date(startDate + 'T00:00:00').toISOString();
     const end = new Date(endDate + 'T23:59:59').toISOString();
     const [salesRes, productsRes, clientsRes, suppliersRes] = await Promise.all([
@@ -40,7 +41,7 @@ export function Reports() {
     setClients((clientsRes.data as Client[]) ?? []);
     setSuppliers((suppliersRes.data as Supplier[]) ?? []);
     setPage(1);
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   const stats = useMemo(() => {

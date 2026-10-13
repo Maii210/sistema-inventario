@@ -28,8 +28,8 @@ export function Clients() {
 
   useEffect(() => { loadClients(); }, []);
 
-  const loadClients = async () => {
-    setLoading(true);
+  const loadClients = async (silent = false) => {
+    if (!silent) setLoading(true);
     const { data } = await supabase.from('clients').select('*').order('name');
     const clientsData = (data as Client[]) ?? [];
     setClients(clientsData);
@@ -45,7 +45,7 @@ export function Clients() {
       });
       setClientStats(stats);
     }
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   const filtered = useMemo(() => {
@@ -98,7 +98,7 @@ export function Clients() {
       if (error) { show(error.message, 'error'); hasError = true; }
       else show('Cliente creado');
     }
-    if (!hasError) { setModalOpen(false); loadClients(); }
+    if (!hasError) { setModalOpen(false); loadClients(true); }
     setSaving(false);
   };
 
@@ -107,7 +107,7 @@ export function Clients() {
     setDeleting(true);
     const { error } = await supabase.from('clients').delete().eq('id', deleteId);
     if (error) show(error.message, 'error');
-    else { show('Cliente eliminado'); loadClients(); }
+    else { show('Cliente eliminado'); loadClients(true); }
     setDeleting(false);
     setDeleteId(null);
   };

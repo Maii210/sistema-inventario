@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import {
   DollarSign,
   ShoppingCart,
@@ -46,12 +46,14 @@ export function Dashboard() {
   const [categoryData, setCategoryData] = useState<{ name: string; value: number; count: number }[]>([]);
   const [barData, setBarData] = useState<{ name: string; ventas: number }[]>([]);
 
+  const didLoadRef = useRef(false);
   useEffect(() => {
-    loadDashboard();
+    loadDashboard(didLoadRef.current);
+    didLoadRef.current = true;
   }, [period]);
 
-  const loadDashboard = async () => {
-    setLoading(true);
+  const loadDashboard = async (silent = false) => {
+    if (!silent) setLoading(true);
 
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -131,7 +133,7 @@ export function Dashboard() {
         }).reverse();
     setBarData(barItems);
 
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   const periodLabels: Record<Period, string> = {

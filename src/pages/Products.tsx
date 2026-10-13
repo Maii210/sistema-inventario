@@ -70,11 +70,11 @@ export function Products() {
   useEffect(() => { loadProducts(); loadSuppliers(); }, []);
   useEffect(() => { setPage(1); }, [search, categoryFilter, brandFilter, useFilter, stockFilter, viewMode]);
 
-  const loadProducts = async () => {
-    setLoading(true);
+  const loadProducts = async (silent = false) => {
+    if (!silent) setLoading(true);
     const { data } = await supabase.from('products').select('*, supplier:suppliers(*)').order('created_at', { ascending: false });
     setProducts((data as Product[]) ?? []);
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   const loadSuppliers = async () => {
@@ -146,7 +146,7 @@ export function Products() {
       const { error } = await supabase.from('products').insert(payload);
       if (error) { show(error.message, 'error'); hasError = true; } else show('Producto creado');
     }
-    if (!hasError) { setModalOpen(false); loadProducts(); }
+    if (!hasError) { setModalOpen(false); loadProducts(true); }
     setSaving(false);
   };
 
@@ -155,7 +155,7 @@ export function Products() {
     setDeleting(true);
     const { error } = await supabase.from('products').delete().eq('id', deleteId);
     if (error) show(error.message, 'error');
-    else { show('Producto eliminado'); loadProducts(); }
+    else { show('Producto eliminado'); loadProducts(true); }
     setDeleting(false);
     setDeleteId(null);
   };
