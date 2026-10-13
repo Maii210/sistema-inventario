@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Plus, Search, ScanLine, Edit2, Trash2, Package, AlertTriangle, Loader2, Filter, X, ChevronDown, LayoutGrid, List } from 'lucide-react';
+import { Plus, Search, ScanLine, Edit2, Trash2, Package, AlertTriangle, Loader2, Filter, X, ChevronDown, LayoutGrid, List, Percent } from 'lucide-react';
 import { supabase, Product, Supplier, ProductCategory, formatCurrency, formatDate } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { Modal } from '@/components/ui/Modal';
@@ -7,11 +7,12 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { Pager } from '@/components/ui/Pager';
 import { useToast } from '@/components/ui/Toast';
+import { soloEnteros, soloDecimales, capitalizeFirst } from '@/lib/validation';
 
 const emptyForm = {
   name: '', barcode: '', category: '', brand: '', description: '',
   cost_price: '', sale_price: '', stock: '', min_stock: '5',
-  supplier_id: '', active: true, margin_pct: '',
+  supplier_id: '', active: true,
   use: '', expiry_date: '',
 };
 
@@ -49,6 +50,11 @@ export function Products() {
     try { return (localStorage.getItem('camila_products_view') as 'cards' | 'table') || 'cards'; } catch { return 'cards'; }
   });
   useEffect(() => { try { localStorage.setItem('camila_products_view', viewMode); } catch { /* ignore */ } }, [viewMode]);
+  const [marginUnit, setMarginUnit] = useState<'bs' | '%'>(() => {
+    try { return (localStorage.getItem('camila_margin_unit') as 'bs' | '%') || 'bs'; } catch { return 'bs'; }
+  });
+  useEffect(() => { try { localStorage.setItem('camila_margin_unit', marginUnit); } catch { /* ignore */ } }, [marginUnit]);
+  const toggleMarginUnit = () => setMarginUnit((m) => (m === 'bs' ? '%' : 'bs'));
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -110,24 +116,9 @@ export function Products() {
       cost_price: String(product.cost_price), sale_price: String(product.sale_price),
       stock: String(product.stock), min_stock: String(product.min_stock),
       supplier_id: product.supplier_id ?? '', active: product.active,
-      margin_pct: '',
       use: product.use ?? '', expiry_date: product.expiry_date ? product.expiry_date.slice(0, 10) : '',
     });
     setModalOpen(true);
-  };
-
-  const handleMarginChange = (val: string) => {
-    const cost = parseFloat(form.cost_price) || 0;
-    const margin = parseFloat(val) || 0;
-    const sale = cost > 0 ? cost + margin : 0;
-    setForm({ ...form, margin_pct: val, sale_price: sale > 0 ? sale.toFixed(2) : '' });
-  };
-
-  const handleCostChange = (val: string) => {
-    const cost = parseFloat(val) || 0;
-    const margin = parseFloat(form.margin_pct) || 0;
-    const sale = cost > 0 && margin > 0 ? cost + margin : form.sale_price;
-    setForm({ ...form, cost_price: val, sale_price: String(sale || form.sale_price) });
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -138,12 +129,12 @@ export function Products() {
     if (!cat) { show('Selecciona o crea una categoría', 'error'); setSaving(false); return; }
 
     const payload = {
-      name: form.name, barcode: form.barcode || null, category: cat,
-      brand: form.brand || null, description: form.description || null,
+      name: capitalizeFirst(form.name), barcode: form.barcode || null, category: cat,
+      brand: form.brand ? capitalizeFirst(form.brand) : null, description: form.description || null,
       cost_price: parseFloat(form.cost_price) || 0, sale_price: parseFloat(form.sale_price) || 0,
       stock: parseInt(form.stock) || 0, min_stock: parseInt(form.min_stock) || 0,
       supplier_id: form.supplier_id || null, active: form.active,
-      use: form.use || null,
+      use: form.use ? capitalizeFirst(form.use) : null,
       expiry_date: form.expiry_date ? new Date(form.expiry_date).toISOString() : null,
     };
 
@@ -181,6 +172,15 @@ export function Products() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page]);
 
+  // Margen de ganancia calculado a partir del precio de costo y de venta.
+  const costNum = parseFloat(form.cost_price) || 0;
+  const saleNum = parseFloat(form.sale_price) || 0;
+  const marginNum = saleNum - costNum;
+  const marginPctNum = costNum > 0 ? (marginNum / costNum) * 100 : 0;
+  const marginBsDisplay = form.cost_price !== '' && form.sale_price !== '' ? marginNum.toFixed(2) : '';
+  const marginPctDisplay = costNum > 0 && form.sale_price !== '' ? `${marginPctNum.toFixed(1)}` : '';
+  const marginFieldValue = marginUnit === 'bs' ? marginBsDisplay : marginPctDisplay;
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -204,6 +204,7 @@ export function Products() {
           </div>
           <button onClick={() => { setScannerTarget('filter'); setScannerOpen(true); }} className="btn-secondary"><ScanLine size={18} /> Escanear</button>
           <button onClick={() => setShowFilters(!showFilters)} className={`btn-secondary ${activeFilters ? 'border-primary-300 text-primary-600 dark:border-primary-700 dark:text-primary-400' : ''}`}><Filter size={18} /> Filtros</button>
+          <button onClick={toggleMarginUnit} className="btn-secondary" title="Cambiar cómo se muestra el margen"><Percent size={18} /> Margen {marginUnit === 'bs' ? 'Bs' : '%'}</button>
           <div className="flex rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden shrink-0">
             <button type="button" onClick={() => setViewMode('cards')} title="Tarjetas" className={`px-3 ${viewMode === 'cards' ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300' : 'text-neutral-400 hover:text-neutral-600'}`}><LayoutGrid size={18} /></button>
             <button type="button" onClick={() => setViewMode('table')} title="Tabla" className={`px-3 ${viewMode === 'table' ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300' : 'text-neutral-400 hover:text-neutral-600'}`}><List size={18} /></button>
@@ -276,7 +277,7 @@ export function Products() {
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <p className="text-lg font-bold text-primary-600 dark:text-primary-400">{formatCurrency(product.sale_price)}</p>
-                    {canEdit && product.cost_price > 0 && <p className="text-xs text-neutral-400">Costo: {formatCurrency(product.cost_price)} · Margen: {formatCurrency(margin)}</p>}
+                    {canEdit && product.cost_price > 0 && <p className="text-xs text-neutral-400">Costo: {formatCurrency(product.cost_price)} · Margen: {marginUnit === 'bs' ? formatCurrency(margin) : `${((margin / product.cost_price) * 100).toFixed(1)}%`}</p>}
                   </div>
                   <span className={`badge ${stockLevel === 'out' ? 'bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300' : stockLevel === 'low' ? 'bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300' : 'bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300'}`}>
                     {stockLevel === 'out' && <AlertTriangle size={12} />}
@@ -301,6 +302,7 @@ export function Products() {
                 <th className="px-4 py-3">Uso</th>
                 <th className="px-4 py-3">P. venta</th>
                 {canEdit && <th className="px-4 py-3">Costo</th>}
+                {canEdit && <th className="px-4 py-3">Margen {marginUnit === 'bs' ? '(Bs)' : '(%)'}</th>}
                 <th className="px-4 py-3">Stock</th>
                 <th className="px-4 py-3">Caducidad</th>
                 {canEdit && <th className="px-4 py-3 text-right">Acciones</th>}
@@ -320,6 +322,7 @@ export function Products() {
                     <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300">{product.use || '—'}</td>
                     <td className="px-4 py-3 font-semibold text-primary-600 dark:text-primary-400">{formatCurrency(product.sale_price)}</td>
                     {canEdit && <td className="px-4 py-3 text-neutral-500">{product.cost_price > 0 ? formatCurrency(product.cost_price) : '—'}</td>}
+                    {canEdit && <td className="px-4 py-3 text-neutral-500">{product.cost_price > 0 ? (marginUnit === 'bs' ? formatCurrency(product.sale_price - product.cost_price) : `${(((product.sale_price - product.cost_price) / product.cost_price) * 100).toFixed(1)}%`) : '—'}</td>}
                     <td className="px-4 py-3">
                       <span className={`badge ${stockLevel === 'out' ? 'bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300' : stockLevel === 'low' ? 'bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300' : 'bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300'}`}>{product.stock}</span>
                     </td>
@@ -342,8 +345,19 @@ export function Products() {
 
       <Pager page={page} totalPages={totalPages} onChange={setPage} />
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar producto' : 'Nuevo producto'} size="lg">
-        <form onSubmit={handleSave} className="space-y-4">
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editing ? 'Editar producto' : 'Nuevo producto'}
+        size="lg"
+        footer={
+          <>
+            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Cancelar</button>
+            <button type="submit" form="product-form" className="btn-primary" disabled={saving}>{saving && <Loader2 size={16} className="animate-spin" />}{editing ? 'Guardar' : 'Crear'}</button>
+          </>
+        }
+      >
+        <form id="product-form" onSubmit={handleSave} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <label className="label">Nombre *</label>
@@ -407,27 +421,36 @@ export function Products() {
 
             <div>
               <label className="label">Precio costo *</label>
-              <input type="number" step="0.01" min="0" value={form.cost_price} onChange={(e) => handleCostChange(e.target.value)} className="input" required />
+              <input type="number" step="0.01" min="0" value={form.cost_price} onChange={(e) => setForm({ ...form, cost_price: soloDecimales(e.target.value) })} className="input" required />
             </div>
 
             <div>
-              <label className="label">Margen (Bs)</label>
-              <input type="number" step="0.01" min="0" value={form.margin_pct} onChange={(e) => handleMarginChange(e.target.value)} className="input" placeholder="Ej: 10" />
+              <div className="flex items-center justify-between">
+                <label className="label">Margen {marginUnit === 'bs' ? '(Bs)' : '(%)'}</label>
+                <button type="button" onClick={toggleMarginUnit} className="text-xs font-medium px-2 py-0.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition" title="Cambiar entre Bs y %">{marginUnit === 'bs' ? 'Ver %' : 'Ver Bs'}</button>
+              </div>
+              <input type="text" readOnly tabIndex={-1} value={marginFieldValue} placeholder="Automático" className="input bg-neutral-100 dark:bg-neutral-800 cursor-default" />
+              {marginUnit === 'bs' && costNum > 0 && saleNum > 0 && (
+                <p className={`text-xs mt-1 ${marginNum < 0 ? 'text-error-600 dark:text-error-400' : 'text-neutral-400'}`}>{marginPctNum.toFixed(1)}% de ganancia</p>
+              )}
+              {marginUnit === '%' && form.cost_price !== '' && form.sale_price !== '' && (
+                <p className={`text-xs mt-1 ${marginNum < 0 ? 'text-error-600 dark:text-error-400' : 'text-neutral-400'}`}>Margen: {marginNum.toFixed(2)} Bs</p>
+              )}
             </div>
 
             <div>
               <label className="label">Precio venta *</label>
-              <input type="number" step="0.01" min="0" value={form.sale_price} onChange={(e) => setForm({ ...form, sale_price: e.target.value, margin_pct: '' })} className="input" required />
+              <input type="number" step="0.01" min="0" value={form.sale_price} onChange={(e) => setForm({ ...form, sale_price: soloDecimales(e.target.value) })} className="input" required />
             </div>
 
             <div>
               <label className="label">Stock *</label>
-              <input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="input" required />
+              <input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: soloEnteros(e.target.value) })} className="input" required />
             </div>
 
             <div>
               <label className="label">Stock mínimo</label>
-              <input type="number" min="0" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} className="input" />
+              <input type="number" min="0" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: soloEnteros(e.target.value) })} className="input" />
               {parseInt(form.min_stock) > 0 && parseInt(form.stock) <= parseInt(form.min_stock) && (
                 <p className="text-xs text-error-600 dark:text-error-400 mt-1">⚠ Stock en o bajo el mínimo</p>
               )}
@@ -444,11 +467,6 @@ export function Products() {
                 <span className="text-sm text-neutral-700 dark:text-neutral-300">Producto activo</span>
               </label>
             </div>
-          </div>
-
-          <div className="flex gap-3 justify-end pt-4 border-t border-neutral-100 dark:border-neutral-800">
-            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Cancelar</button>
-            <button type="submit" className="btn-primary" disabled={saving}>{saving && <Loader2 size={16} className="animate-spin" />}{editing ? 'Guardar' : 'Crear'}</button>
           </div>
         </form>
       </Modal>

@@ -183,8 +183,18 @@ export function Clients() {
         </div>
       )}
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Editar cliente' : 'Nuevo cliente'}>
-        <form onSubmit={handleSave} className="space-y-4">
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editing ? 'Editar cliente' : 'Nuevo cliente'}
+        footer={
+          <>
+            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Cancelar</button>
+            <button type="submit" form="client-form" className="btn-primary" disabled={saving}>{saving && <Loader2 size={16} className="animate-spin" />}{editing ? 'Guardar' : 'Crear'}</button>
+          </>
+        }
+      >
+        <form id="client-form" onSubmit={handleSave} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div><label className="label">Nombre *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: soloLetras(e.target.value) })} className="input" required /></div>
             <div><label className="label">Apellido *</label><input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: soloLetras(e.target.value) })} className="input" required /></div>
@@ -196,10 +206,6 @@ export function Clients() {
           </div>
           <div><label className="label">Dirección</label><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input" /></div>
           <div><label className="label">Notas</label><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input min-h-[60px] resize-none" /></div>
-          <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Cancelar</button>
-            <button type="submit" className="btn-primary" disabled={saving}>{saving && <Loader2 size={16} className="animate-spin" />}{editing ? 'Guardar' : 'Crear'}</button>
-          </div>
         </form>
       </Modal>
 

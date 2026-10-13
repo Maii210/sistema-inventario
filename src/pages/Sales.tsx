@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { ScanLine, Search, Plus, Minus, Trash2, ShoppingCart, X, Loader2, Receipt, Printer, CheckCircle, User as UserIcon, Camera, MessageCircle, FileDown, PackagePlus, LayoutGrid, List } from 'lucide-react';
 import { supabase, Product, Client, Profile, Sale, PaymentMethod, formatCurrency, formatDateTime } from '@/lib/supabase';
+import { soloLetras, soloDigitos } from '@/lib/validation';
 import { settingsApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
@@ -11,6 +12,8 @@ import jsPDF from 'jspdf';
 
 const PAGE_SIZE = 12;
 
+const CART_KEY = 'camila_sales_cart';
+
 interface CartItem {
   product: Product;
   quantity: number;
@@ -18,6 +21,25 @@ interface CartItem {
   discountAmt: number;
   isExternal?: boolean;
   externalCost?: number;
+}
+
+interface PersistedSale {
+  cart: CartItem[];
+  selectedClient: string;
+  selectedSeller: string;
+  paymentMethod: PaymentMethod;
+  globalDiscount: number;
+  notes: string;
+}
+
+// Recupera el carrito y datos de la venta en curso desde el navegador.
+function readPersistedSale(): Partial<PersistedSale> {
+  try {
+    const raw = localStorage.getItem(CART_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
 }
 
 export function Sales() {
@@ -30,12 +52,12 @@ export function Sales() {
   const [sellers, setSellers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedClient, setSelectedClient] = useState('');
-  const [selectedSeller, setSelectedSeller] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Efectivo');
-  const [globalDiscount, setGlobalDiscount] = useState(0);
-  const [notes, setNotes] = useState('');
+  const [cart, setCart] = useState<CartItem[]>(() => readPersistedSale().cart ?? []);
+  const [selectedClient, setSelectedClient] = useState(() => readPersistedSale().selectedClient ?? '');
+  const [selectedSeller, setSelectedSeller] = useState(() => readPersistedSale().selectedSeller ?? '');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() => readPersistedSale().paymentMethod ?? 'Efectivo');
+  const [globalDiscount, setGlobalDiscount] = useState(() => readPersistedSale().globalDiscount ?? 0);
+  const [notes, setNotes] = useState(() => readPersistedSale().notes ?? '');
   const [qrImage, setQrImage] = useState('');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>(() => {
     try { return (localStorage.getItem('camila_sales_view') as 'cards' | 'table') || 'cards'; } catch { return 'cards'; }
@@ -52,12 +74,21 @@ export function Sales() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [page, setPage] = useState(1);
+  const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [clientForm, setClientForm] = useState({ name: '', last_name: '', document_id: '', phone: '', email: '', address: '' });
+  const [savingClient, setSavingClient] = useState(false);
 
   useEffect(() => { loadData(); }, []);
   useEffect(() => { setPage(1); }, [search, viewMode]);
   useEffect(() => {
     settingsApi.get('bank_qr').then((s) => setBankQr(s?.value || '')).catch(() => setBankQr(''));
   }, []);
+  // Mantiene la venta en curso (carrito, cliente, vendedora, etc.) al cambiar de módulo o recargar.
+  useEffect(() => {
+    try {
+      localStorage.setItem(CART_KEY, JSON.stringify({ cart, selectedClient, selectedSeller, paymentMethod, globalDiscount, notes }));
+    } catch { /* ignore */ }
+  }, [cart, selectedClient, selectedSeller, paymentMethod, globalDiscount, notes]);
 
   const addExternalItem = () => {
     const name = extForm.name.trim();
@@ -74,6 +105,27 @@ export function Sales() {
     setCart((prev) => [...prev, { product: synthetic, quantity: qty, unitPrice: price, discountAmt: 0, isExternal: true, externalCost: cost }]);
     setExtForm({ name: '', cost: '', price: '', qty: '1' });
     setExtModalOpen(false);
+  };
+
+  // Crea un cliente al vuelo durante una venta y lo deja seleccionado.
+  const handleCreateClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clientForm.name.trim() || !clientForm.last_name.trim()) { show('Nombre y apellido son obligatorios', 'error'); return; }
+    setSavingClient(true);
+    const payload = {
+      name: clientForm.name, last_name: clientForm.last_name,
+      document_id: clientForm.document_id || null, phone: clientForm.phone || null,
+      email: clientForm.email || null, address: clientForm.address || null, notes: null,
+    };
+    const { data, error } = await supabase.from('clients').insert(payload).select().single();
+    if (error) { show(error.message, 'error'); setSavingClient(false); return; }
+    const newClient = data as Client;
+    setClients((prev) => [...prev, newClient]);
+    setSelectedClient(newClient.id);
+    setClientForm({ name: '', last_name: '', document_id: '', phone: '', email: '', address: '' });
+    setClientModalOpen(false);
+    setSavingClient(false);
+    show('Cliente creado');
   };
 
   const loadData = async () => {
@@ -139,6 +191,7 @@ export function Sales() {
   const globalDiscountAmt = globalDiscount;
   const totalDiscount = itemDiscounts + globalDiscountAmt;
   const total = Math.max(subtotal - totalDiscount, 0);
+  const totalUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleScan = (code: string) => {
     const product = products.find((p) => p.barcode === code);
@@ -327,7 +380,7 @@ export function Sales() {
               <div className="flex items-center gap-2">
                 <ShoppingCart size={20} className="text-primary-600 dark:text-primary-400" />
                 <h2 className="font-semibold text-neutral-800 dark:text-neutral-100">Carrito</h2>
-                <span className="badge bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">{cart.length}</span>
+                <span className="badge bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">{totalUnits}</span>
               </div>
               {cart.length > 0 && <button onClick={() => setCart([])} className="text-xs text-neutral-400 hover:text-error-600">Vaciar</button>}
             </div>
@@ -377,12 +430,15 @@ export function Sales() {
                 <div className="grid grid-cols-1 gap-3">
                   <div>
                     <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">Cliente (opcional)</label>
-                    <div className="relative">
-                      <UserIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                      <select value={selectedClient} onChange={(e) => setSelectedClient(e.target.value)} className="select pl-9 py-2 text-sm">
-                        <option value="">Cliente general</option>
-                        {clients.map((c) => <option key={c.id} value={c.id}>{c.name} {c.last_name}</option>)}
-                      </select>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <UserIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                        <select value={selectedClient} onChange={(e) => setSelectedClient(e.target.value)} className="select pl-9 py-2 text-sm">
+                          <option value="">Cliente general</option>
+                          {clients.map((c) => <option key={c.id} value={c.id}>{c.name} {c.last_name}</option>)}
+                        </select>
+                      </div>
+                      <button type="button" onClick={() => setClientModalOpen(true)} className="btn-secondary px-3 shrink-0" title="Crear cliente nuevo"><Plus size={18} /></button>
                     </div>
                   </div>
 
@@ -466,6 +522,33 @@ export function Sales() {
             <button onClick={addExternalItem} className="btn-primary">Agregar al carrito</button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={clientModalOpen}
+        onClose={() => setClientModalOpen(false)}
+        title="Nuevo cliente"
+        size="sm"
+        footer={
+          <>
+            <button type="button" onClick={() => setClientModalOpen(false)} className="btn-secondary">Cancelar</button>
+            <button type="submit" form="sale-client-form" className="btn-primary" disabled={savingClient}>{savingClient && <Loader2 size={16} className="animate-spin" />}Crear cliente</button>
+          </>
+        }
+      >
+        <form id="sale-client-form" onSubmit={handleCreateClient} className="space-y-4">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">Se creará el cliente y quedará seleccionado para esta venta.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="label">Nombre *</label><input value={clientForm.name} onChange={(e) => setClientForm({ ...clientForm, name: soloLetras(e.target.value) })} className="input" required /></div>
+            <div><label className="label">Apellido *</label><input value={clientForm.last_name} onChange={(e) => setClientForm({ ...clientForm, last_name: soloLetras(e.target.value) })} className="input" required /></div>
+          </div>
+          <div><label className="label">Carnet (opcional)</label><input value={clientForm.document_id} onChange={(e) => setClientForm({ ...clientForm, document_id: e.target.value })} className="input" placeholder="12345678" /></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="label">Teléfono</label><input value={clientForm.phone} onChange={(e) => setClientForm({ ...clientForm, phone: soloDigitos(e.target.value) })} className="input" /></div>
+            <div><label className="label">Email</label><input type="email" value={clientForm.email} onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })} className="input" /></div>
+          </div>
+          <div><label className="label">Dirección</label><input value={clientForm.address} onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })} className="input" /></div>
+        </form>
       </Modal>
 
       <Modal open={receiptOpen} onClose={() => setReceiptOpen(false)} title="Recibo de venta" size="sm">
