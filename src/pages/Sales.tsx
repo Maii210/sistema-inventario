@@ -12,8 +12,6 @@ import jsPDF from 'jspdf';
 
 const PAGE_SIZE = 12;
 
-const CART_KEY = 'camila_sales_cart';
-
 interface CartItem {
   product: Product;
   quantity: number;
@@ -32,10 +30,15 @@ interface PersistedSale {
   notes: string;
 }
 
+// Cada usuario tiene su propio carrito guardado (evita heredar la vendedora de otra cuenta).
+function cartKeyFor(userId?: string | null) {
+  return `camila_sales_cart_${userId || 'anon'}`;
+}
+
 // Recupera el carrito y datos de la venta en curso desde el navegador.
-function readPersistedSale(): Partial<PersistedSale> {
+function readPersistedSale(key: string): Partial<PersistedSale> {
   try {
-    const raw = localStorage.getItem(CART_KEY);
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -46,18 +49,19 @@ export function Sales() {
   const { profile, user } = useAuth();
   const { show } = useToast();
   const qrInputRef = useRef<HTMLInputElement>(null);
+  const cartKey = cartKeyFor(user?.id);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [sellers, setSellers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [cart, setCart] = useState<CartItem[]>(() => readPersistedSale().cart ?? []);
-  const [selectedClient, setSelectedClient] = useState(() => readPersistedSale().selectedClient ?? '');
-  const [selectedSeller, setSelectedSeller] = useState(() => readPersistedSale().selectedSeller ?? '');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() => readPersistedSale().paymentMethod ?? 'Efectivo');
-  const [globalDiscount, setGlobalDiscount] = useState(() => readPersistedSale().globalDiscount ?? 0);
-  const [notes, setNotes] = useState(() => readPersistedSale().notes ?? '');
+  const [cart, setCart] = useState<CartItem[]>(() => readPersistedSale(cartKey).cart ?? []);
+  const [selectedClient, setSelectedClient] = useState(() => readPersistedSale(cartKey).selectedClient ?? '');
+  const [selectedSeller, setSelectedSeller] = useState(() => readPersistedSale(cartKey).selectedSeller ?? '');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() => readPersistedSale(cartKey).paymentMethod ?? 'Efectivo');
+  const [globalDiscount, setGlobalDiscount] = useState(() => readPersistedSale(cartKey).globalDiscount ?? 0);
+  const [notes, setNotes] = useState(() => readPersistedSale(cartKey).notes ?? '');
   const [qrImage, setQrImage] = useState('');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>(() => {
     try { return (localStorage.getItem('camila_sales_view') as 'cards' | 'table') || 'cards'; } catch { return 'cards'; }
@@ -86,9 +90,9 @@ export function Sales() {
   // Mantiene la venta en curso (carrito, cliente, vendedora, etc.) al cambiar de módulo o recargar.
   useEffect(() => {
     try {
-      localStorage.setItem(CART_KEY, JSON.stringify({ cart, selectedClient, selectedSeller, paymentMethod, globalDiscount, notes }));
+      localStorage.setItem(cartKey, JSON.stringify({ cart, selectedClient, selectedSeller, paymentMethod, globalDiscount, notes }));
     } catch { /* ignore */ }
-  }, [cart, selectedClient, selectedSeller, paymentMethod, globalDiscount, notes]);
+  }, [cartKey, cart, selectedClient, selectedSeller, paymentMethod, globalDiscount, notes]);
 
   const addExternalItem = () => {
     const name = extForm.name.trim();

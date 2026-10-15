@@ -123,6 +123,44 @@ export function Reports() {
     });
   }, [suppliers, products]);
 
+  // Productos prestados (ítems externos): se prestan sin descontar stock.
+  const borrowed = useMemo(() => {
+    const map = new Map<string, { name: string; quantity: number; cost: number; price: number }>();
+    for (const s of sales) {
+      for (const it of s.sale_items ?? []) {
+        if (!it.is_external) continue;
+        const cur = map.get(it.product_name) ?? { name: it.product_name, quantity: 0, cost: 0, price: 0 };
+        cur.quantity += it.quantity;
+        cur.cost += Number(it.external_cost ?? 0) * it.quantity;
+        cur.price += Number(it.unit_price) * it.quantity;
+        map.set(it.product_name, cur);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.quantity - a.quantity);
+  }, [sales]);
+  const totalBorrowedCost = borrowed.reduce((sum, b) => sum + b.cost, 0);
+
+  // Descuentos agrupados por vendedora (para admin).
+  const discountsBySeller = useMemo(() => {
+    const map = new Map<string, { sellerName: string; count: number; discount: number; total: number }>();
+    for (const s of sales) {
+      const key = s.seller_id || 'sin-asignar';
+      const name = s.seller ? `${s.seller.full_name} ${s.seller.last_name}`.trim() : 'Sin asignar';
+      const cur = map.get(key) ?? { sellerName: name, count: 0, discount: 0, total: 0 };
+      cur.count += 1;
+      cur.discount += Number(s.discount);
+      cur.total += Number(s.total);
+      map.set(key, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.discount - a.discount);
+  }, [sales]);
+
+  // Descuentos propios de la vendedora logueada.
+  const myDiscount = useMemo(
+    () => sales.filter((s) => s.seller_id === profile?.id).reduce((sum, s) => sum + Number(s.discount), 0),
+    [sales, profile]
+  );
+
   const toggleSort = (col: string, current: { col: string; dir: SortDir }, setFn: (s: { col: string; dir: SortDir }) => void) => {
     if (current.col === col) setFn({ col, dir: current.dir === 'asc' ? 'desc' : 'asc' });
     else setFn({ col, dir: 'asc' });
@@ -217,6 +255,13 @@ export function Reports() {
             </div>
           </>
         )}
+        {isVendor && (
+          <div className="card p-5">
+            <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-xl bg-warning-100 dark:bg-warning-900/40 text-warning-600 flex items-center justify-center"><TrendingUp size={20} /></div><span className="text-sm text-neutral-400">Tus descuentos</span></div>
+            <p className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">{formatCurrency(myDiscount)}</p>
+            <p className="text-xs text-neutral-400 mt-1">Aplicados en tus ventas</p>
+          </div>
+        )}
         <div className="card p-5">
           <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-xl bg-success-100 dark:bg-success-900/40 text-success-600 flex items-center justify-center"><Package size={20} /></div><span className="text-sm text-neutral-400">Inventario</span></div>
           <p className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">{stats.productCount} productos</p>
@@ -249,6 +294,67 @@ export function Reports() {
                 <div className="flex justify-between"><span className="text-neutral-400">Ticket promedio</span><span className="text-neutral-700 dark:text-neutral-200">{formatCurrency(stats.avgTicket)}</span></div>
               </div>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="card overflow-hidden">
+              <div className="px-6 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Productos prestados ({borrowed.length})</h2>
+                <span className="text-xs text-neutral-400">Costo total: {formatCurrency(totalBorrowedCost)}</span>
+              </div>
+              {borrowed.length === 0 ? (
+                <p className="px-6 py-4 text-sm text-neutral-400">No hay productos prestados en el período.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead><tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30">
+                      <th className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Producto</th>
+                      <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Cantidad</th>
+                      <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Costo</th>
+                    </tr></thead>
+                    <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
+                      {borrowed.map((b) => (
+                        <tr key={b.name}>
+                          <td className="px-5 py-3 text-sm font-medium text-neutral-700 dark:text-neutral-200">{b.name}</td>
+                          <td className="px-5 py-3 text-sm text-right text-neutral-500">{b.quantity}</td>
+                          <td className="px-5 py-3 text-sm text-right text-neutral-500">{formatCurrency(b.cost)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {!isVendor && (
+              <div className="card overflow-hidden">
+                <div className="px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                  <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Descuentos por vendedora</h2>
+                </div>
+                {discountsBySeller.length === 0 ? (
+                  <p className="px-6 py-4 text-sm text-neutral-400">No hay descuentos en el período.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead><tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30">
+                        <th className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Vendedora</th>
+                        <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Ventas</th>
+                        <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Descuentos</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
+                        {discountsBySeller.map((d) => (
+                          <tr key={d.sellerName}>
+                            <td className="px-5 py-3 text-sm font-medium text-neutral-700 dark:text-neutral-200">{d.sellerName}</td>
+                            <td className="px-5 py-3 text-sm text-right text-neutral-500">{d.count}</td>
+                            <td className="px-5 py-3 text-sm text-right text-success-600 font-medium">{formatCurrency(d.discount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="card overflow-hidden">

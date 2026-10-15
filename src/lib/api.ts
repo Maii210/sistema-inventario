@@ -171,7 +171,13 @@ export interface CashSession {
   closedByName: string | null;
   status: 'open' | 'closed';
   notes: string | null;
-  totals?: { count: number; total: number; byMethod: Record<string, number> };
+  totals?: {
+    count: number;
+    total: number;
+    discount: number;
+    byMethod: Record<string, number>;
+    discountsBySeller: { sellerId: string | null; sellerName: string; count: number; total: number; discount: number }[];
+  };
   expectedCash?: number;
   difference?: number | null;
 }
