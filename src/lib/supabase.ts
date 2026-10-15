@@ -343,15 +343,16 @@ function createQuery(table: string) {
       // SELECT
       let data: any[] = await api<any[]>(`/${endpoint}`);
 
-      // Apply filters client-side (backend returns all)
-      for (const f of filters) data = data.filter(f);
-
-      // Map to frontend types
+      // Map to frontend types first, so filters use frontend field names
+      // (backend returns camelCase without some fields, e.g. Sale has no `status`).
       if (table === 'profiles' || table === 'users') data = data.map(mapUser);
       else if (table === 'clients' || table === 'customers') data = data.map(mapClient);
       else if (table === 'suppliers') data = data.map(mapSupplier);
       else if (table === 'products') data = data.map(mapProduct);
       else if (table === 'sales') data = data.map(mapSale);
+
+      // Apply filters client-side (backend returns all)
+      for (const f of filters) data = data.filter(f);
 
       // Sort
       if (sortCol) {

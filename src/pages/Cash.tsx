@@ -3,13 +3,15 @@ import { Loader2, LockOpen, Lock, Wallet } from 'lucide-react';
 import { cashApi, CashSession } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import { formatCurrency, formatDateTime } from '@/lib/supabase';
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/supabase';
 
-const METHOD_LABELS: Record<string, string> = { efectivo: 'Efectivo', qr: 'QR', transfer: 'Transferencia', card: 'Tarjeta' };
+const METHOD_LABELS: Record<string, string> = { efectivo: 'Efectivo (caja)', qr: 'QR' };
+const METHOD_ORDER = ['efectivo', 'qr'];
 
 export function Cash() {
   const { profile, user } = useAuth();
   const { show } = useToast();
+  const isVendor = profile?.role === 'vendedor';
   const [session, setSession] = useState<CashSession | null>(null);
   const [history, setHistory] = useState<CashSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +54,8 @@ export function Cash() {
 
   const expected = session?.expectedCash ?? 0;
   const diff = counted !== '' ? (parseFloat(counted) || 0) - expected : null;
+  const totalDiscount = session?.totals?.discount ?? 0;
+  const myDiscount = session?.totals?.discountsBySeller?.find((d) => d.sellerId === user?.id)?.discount ?? 0;
 
   const stat = 'card p-4';
 
@@ -65,59 +69,88 @@ export function Cash() {
       {loading ? (
         <div className="flex items-center justify-center py-20"><Loader2 size={28} className="animate-spin text-primary-500" /></div>
       ) : !session ? (
-        <div className="card p-6 max-w-md space-y-4">
-          <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-200"><LockOpen size={20} className="text-primary-500" /><h2 className="font-semibold">Abrir caja</h2></div>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">No hay una caja abierta. Ingresa el monto inicial en efectivo para comenzar el turno.</p>
-          <div>
-            <label className="label">Monto inicial (Bs)</label>
-            <input type="number" min="0" step="0.01" value={opening} onChange={(e) => setOpening(e.target.value)} className="input" placeholder="0.00" />
+        isVendor ? (
+          <div className="card p-6 max-w-md space-y-2">
+            <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-200"><Lock size={20} className="text-primary-500" /><h2 className="font-semibold">Caja cerrada</h2></div>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">No hay una caja abierta. Pídele a un administrador que la abra para comenzar el turno.</p>
           </div>
-          <button onClick={openCash} disabled={busy} className="btn-primary w-full">{busy ? <Loader2 size={16} className="animate-spin" /> : <LockOpen size={16} />} Abrir caja</button>
-        </div>
+        ) : (
+          <div className="card p-6 max-w-md space-y-4">
+            <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-200"><LockOpen size={20} className="text-primary-500" /><h2 className="font-semibold">Abrir caja</h2></div>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">No hay una caja abierta. Ingresa el monto inicial en efectivo para comenzar el turno.</p>
+            <div>
+              <label className="label">Monto inicial (Bs)</label>
+              <input type="number" min="0" step="0.01" value={opening} onChange={(e) => setOpening(e.target.value)} className="input" placeholder="0.00" />
+            </div>
+            <button onClick={openCash} disabled={busy} className="btn-primary w-full">{busy ? <Loader2 size={16} className="animate-spin" /> : <LockOpen size={16} />} Abrir caja</button>
+          </div>
+        )
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Resumen de la sesión abierta */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
+              <div className={stat}><div className="text-sm text-neutral-400">Fecha de apertura</div><div className="text-base font-bold text-neutral-800 dark:text-neutral-100">{formatDate(session.openedAt)}</div><div className="text-xs text-neutral-400">{formatDateTime(session.openedAt)}</div></div>
               <div className={stat}><div className="text-sm text-neutral-400">Monto inicial</div><div className="text-xl font-bold text-neutral-800 dark:text-neutral-100">{formatCurrency(session.openingAmount)}</div></div>
               <div className={stat}><div className="text-sm text-neutral-400">Ventas del turno</div><div className="text-xl font-bold text-neutral-800 dark:text-neutral-100">{formatCurrency(session.totals?.total ?? 0)}</div></div>
+              <div className={stat}><div className="text-sm text-neutral-400">Descuentos del turno</div><div className="text-xl font-bold text-success-600">{formatCurrency(totalDiscount)}</div></div>
             </div>
             <div className="card p-4">
               <div className="flex items-center gap-2 mb-3"><Wallet size={18} className="text-primary-500" /><h2 className="font-semibold text-neutral-800 dark:text-neutral-100">Ventas por método</h2></div>
               <div className="space-y-2">
-                {Object.keys(METHOD_LABELS).map((m) => (
+                {METHOD_ORDER.map((m) => (
                   <div key={m} className="flex justify-between text-sm">
                     <span className="text-neutral-500 dark:text-neutral-400">{METHOD_LABELS[m]}</span>
                     <span className="text-neutral-800 dark:text-neutral-100 font-medium">{formatCurrency(session.totals?.byMethod?.[m] ?? 0)}</span>
                   </div>
                 ))}
+                <div className="flex justify-between text-sm">
+                  <span className="text-neutral-500 dark:text-neutral-400">Descuentos</span>
+                  <span className="text-success-600 font-medium">-{formatCurrency(totalDiscount)}</span>
+                </div>
                 <div className="flex justify-between text-sm pt-2 border-t border-neutral-100 dark:border-neutral-800">
                   <span className="text-neutral-500 dark:text-neutral-400">Efectivo esperado en caja</span>
                   <span className="text-primary-600 dark:text-primary-400 font-bold">{formatCurrency(expected)}</span>
                 </div>
               </div>
+              {isVendor && <p className="text-xs text-neutral-400 mt-3">Tus descuentos en este turno: <span className="text-success-600 font-medium">{formatCurrency(myDiscount)}</span></p>}
               <p className="text-xs text-neutral-400 mt-3">Abierta: {formatDateTime(session.openedAt)}{session.openedByName ? ` · ${session.openedByName}` : ''}</p>
             </div>
           </div>
 
           {/* Cierre / arqueo */}
-          <div className="card p-6 space-y-4 self-start">
-            <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-200"><Lock size={20} className="text-primary-500" /><h2 className="font-semibold">Cerrar caja (arqueo)</h2></div>
-            <div>
-              <label className="label">Efectivo contado (Bs)</label>
-              <input type="number" min="0" step="0.01" value={counted} onChange={(e) => setCounted(e.target.value)} className="input" placeholder="0.00" />
-            </div>
-            {diff !== null && (
-              <div className={`text-sm font-medium ${Math.abs(diff) < 0.01 ? 'text-success-600' : diff > 0 ? 'text-warning-600' : 'text-error-600'}`}>
-                {Math.abs(diff) < 0.01 ? 'Cuadra exactamente ✓' : `Diferencia: ${formatCurrency(diff)} (${diff > 0 ? 'sobrante' : 'faltante'})`}
+          {isVendor ? (
+            <div className="card p-6 space-y-3 self-start">
+              <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-200"><Lock size={20} className="text-primary-500" /><h2 className="font-semibold">Resumen del turno</h2></div>
+              <div className="flex justify-between text-sm">
+                <span className="text-neutral-500 dark:text-neutral-400">Efectivo esperado en caja</span>
+                <span className="text-primary-600 dark:text-primary-400 font-bold">{formatCurrency(expected)}</span>
               </div>
-            )}
-            <div>
-              <label className="label">Notas (opcional)</label>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="input min-h-[70px] resize-none" placeholder="Observaciones del cierre" />
+              <div className="flex justify-between text-sm">
+                <span className="text-neutral-500 dark:text-neutral-400">Tus descuentos en este turno</span>
+                <span className="text-success-600 font-medium">{formatCurrency(myDiscount)}</span>
+              </div>
+              <p className="text-xs text-neutral-400">El cierre de caja (arqueo) lo realiza un administrador.</p>
             </div>
-            <button onClick={closeCash} disabled={busy || counted === ''} className="btn-primary w-full">{busy ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />} Cerrar caja</button>
-          </div>
+          ) : (
+            <div className="card p-6 space-y-4 self-start">
+              <div className="flex items-center gap-2 text-neutral-700 dark:text-neutral-200"><Lock size={20} className="text-primary-500" /><h2 className="font-semibold">Cerrar caja (arqueo)</h2></div>
+              <div>
+                <label className="label">Efectivo contado (Bs)</label>
+                <input type="number" min="0" step="0.01" value={counted} onChange={(e) => setCounted(e.target.value)} className="input" placeholder="0.00" />
+              </div>
+              {diff !== null && (
+                <div className={`text-sm font-medium ${Math.abs(diff) < 0.01 ? 'text-success-600' : diff > 0 ? 'text-warning-600' : 'text-error-600'}`}>
+                  {Math.abs(diff) < 0.01 ? 'Cuadra exactamente ✓' : `Diferencia: ${formatCurrency(diff)} (${diff > 0 ? 'sobrante' : 'faltante'})`}
+                </div>
+              )}
+              <div>
+                <label className="label">Notas (opcional)</label>
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="input min-h-[70px] resize-none" placeholder="Observaciones del cierre" />
+              </div>
+              <button onClick={closeCash} disabled={busy || counted === ''} className="btn-primary w-full">{busy ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />} Cerrar caja</button>
+            </div>
+          )}
         </div>
       )}
 

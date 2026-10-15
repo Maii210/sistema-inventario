@@ -145,13 +145,6 @@ export function Dashboard() {
 
   const statCards = useMemo(() => [
     {
-      label: 'Ventas',
-      value: formatCurrency(stats.todayTotal),
-      icon: <DollarSign size={22} />,
-      color: 'from-primary-500 to-primary-600',
-      sub: `${stats.todayCount} transacciones`,
-    },
-    {
       label: `Ventas · ${periodLabels[period]}`,
       value: formatCurrency(stats.monthTotal),
       icon: <TrendingUp size={22} />,
