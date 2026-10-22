@@ -72,6 +72,14 @@ export interface Product {
   created_at: string;
   updated_at: string;
   supplier?: Supplier | null;
+  batches?: ProductBatch[];
+}
+
+export interface ProductBatch {
+  id: string;
+  quantity: number;
+  expiry_date: string | null;
+  created_at: string;
 }
 
 export type PaymentMethod = 'Efectivo' | 'QR';
@@ -174,7 +182,7 @@ function mapSupplierReverse(s: Partial<Supplier>) {
   return r;
 }
 function mapProduct(p: any): Product {
-  return { id: p.id, name: p.name, barcode: p.barcode || null, category: p.category || '', brand: p.brand || null, description: p.description || null, cost_price: p.purchasePrice ?? 0, sale_price: p.price ?? 0, stock: p.stock ?? 0, min_stock: p.minStock ?? 0, supplier_id: p.supplierId || null, use: p.use || null, expiry_date: p.expiryDate || null, active: true, created_at: p.createdAt, updated_at: p.updatedAt, supplier: p.supplier ? mapSupplier(p.supplier) : undefined };
+  return { id: p.id, name: p.name, barcode: p.barcode || null, category: p.category || '', brand: p.brand || null, description: p.description || null, cost_price: p.purchasePrice ?? 0, sale_price: p.price ?? 0, stock: p.stock ?? 0, min_stock: p.minStock ?? 0, supplier_id: p.supplierId || null, use: p.use || null, expiry_date: p.expiryDate || null, active: true, created_at: p.createdAt, updated_at: p.updatedAt, supplier: p.supplier ? mapSupplier(p.supplier) : undefined, batches: Array.isArray(p.batches) ? p.batches.map((b: any) => ({ id: b.id, quantity: b.quantity, expiry_date: b.expiryDate || null, created_at: b.createdAt })) : undefined };
 }
 function mapProductReverse(p: Partial<Product>) {
   const r: any = {};

@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/Toast';
-import { soloLetras, soloDigitos } from '@/lib/validation';
+import { soloLetras, titleCase, normalizePhone, isValidPhone, PHONE_PREFIX } from '@/lib/validation';
 
 const emptyForm = { name: '', last_name: '', document_id: '', email: '', phone: '', address: '', notes: '' };
 
@@ -78,13 +78,19 @@ export function Clients() {
     e.preventDefault();
     setSaving(true);
 
+    if (!isValidPhone(form.phone)) {
+      show('El teléfono debe tener 8 dígitos', 'error');
+      setSaving(false);
+      return;
+    }
+
     const payload = {
-      name: form.name,
-      last_name: form.last_name,
+      name: titleCase(form.name),
+      last_name: titleCase(form.last_name),
       document_id: form.document_id || null,
       email: form.email || null,
-      phone: form.phone || null,
-      address: form.address || null,
+      phone: normalizePhone(form.phone) || null,
+      address: titleCase(form.address) || null,
       notes: form.notes || null,
     };
 
@@ -202,7 +208,7 @@ export function Clients() {
           <div><label className="label">Carnet (opcional)</label><input value={form.document_id} onChange={(e) => setForm({ ...form, document_id: e.target.value })} className="input" placeholder="12345678" /></div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className="label">Email</label><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" /></div>
-            <div><label className="label">Teléfono</label><input value={form.phone} onChange={(e) => setForm({ ...form, phone: soloDigitos(e.target.value) })} className="input" /></div>
+            <div><label className="label">Teléfono</label><div className="relative"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 text-sm pointer-events-none">{PHONE_PREFIX}</span><input value={form.phone} onChange={(e) => setForm({ ...form, phone: normalizePhone(e.target.value) })} className="input pl-14" placeholder="70000000" /></div></div>
           </div>
           <div><label className="label">Dirección</label><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input" /></div>
           <div><label className="label">Notas</label><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input min-h-[60px] resize-none" /></div>
@@ -221,7 +227,7 @@ export function Clients() {
             </div>
             <div className="space-y-2 text-sm">
               {viewClient.email && <div className="flex justify-between"><span className="text-neutral-400">Email</span><span className="text-neutral-700 dark:text-neutral-200">{viewClient.email}</span></div>}
-              {viewClient.phone && <div className="flex justify-between"><span className="text-neutral-400">Teléfono</span><span className="text-neutral-700 dark:text-neutral-200">{viewClient.phone}</span></div>}
+              {viewClient.phone && <div className="flex justify-between"><span className="text-neutral-400">Teléfono</span><span className="text-neutral-700 dark:text-neutral-200">{PHONE_PREFIX} {viewClient.phone}</span></div>}
               {viewClient.address && <div className="flex justify-between"><span className="text-neutral-400">Dirección</span><span className="text-neutral-700 dark:text-neutral-200">{viewClient.address}</span></div>}
               <div className="flex justify-between"><span className="text-neutral-400">Registro</span><span className="text-neutral-700 dark:text-neutral-200">{formatDate(viewClient.created_at)}</span></div>
             </div>

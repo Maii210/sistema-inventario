@@ -1,10 +1,12 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { TrendingUp, DollarSign, ShoppingCart, Package, Calendar, BarChart3, Loader2, FileDown, ChevronLeft, ChevronRight, ArrowUpDown, Users, Truck } from 'lucide-react';
+import { TrendingUp, DollarSign, ShoppingCart, Package, Calendar, FileDown, ChevronLeft, ChevronRight, ArrowUpDown, Users, Truck, Wallet } from 'lucide-react';
 import { supabase, Sale, Product, Client, Supplier, PaymentMethod, formatCurrency, formatDateTime, formatDate } from '@/lib/supabase';
+import { cashApi, CashSession } from '@/lib/api';
+import { PHONE_PREFIX } from '@/lib/validation';
 import { useAuth } from '@/context/AuthContext';
 import jsPDF from 'jspdf';
 
-type Tab = 'ventas' | 'inventario' | 'clientes' | 'proveedores';
+type Tab = 'ventas' | 'inventario' | 'clientes' | 'proveedores' | 'cajas';
 type SortDir = 'asc' | 'desc';
 
 export function Reports() {
@@ -17,6 +19,7 @@ export function Reports() {
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [cashSessions, setCashSessions] = useState<CashSession[]>([]);
   const [saleSort, setSaleSort] = useState<{ col: string; dir: SortDir }>({ col: 'created_at', dir: 'desc' });
   const [prodSort, setProdSort] = useState<{ col: string; dir: SortDir }>({ col: 'name', dir: 'asc' });
   const [clientSort, setClientSort] = useState<{ col: string; dir: SortDir }>({ col: 'name', dir: 'asc' });
@@ -30,16 +33,18 @@ export function Reports() {
     if (!silent) setLoading(true);
     const start = new Date(startDate + 'T00:00:00').toISOString();
     const end = new Date(endDate + 'T23:59:59').toISOString();
-    const [salesRes, productsRes, clientsRes, suppliersRes] = await Promise.all([
+    const [salesRes, productsRes, clientsRes, suppliersRes, cashRes] = await Promise.all([
       supabase.from('sales').select('*, client:clients(*), seller:profiles(*), sale_items(*)').eq('status', 'completada').gte('created_at', start).lte('created_at', end).order('created_at', { ascending: false }),
       supabase.from('products').select('*, supplier:suppliers(*)'),
       supabase.from('clients').select('*').order('name'),
       supabase.from('suppliers').select('*').order('name'),
+      cashApi.history().catch(() => []),
     ]);
     setSales((salesRes.data as Sale[]) ?? []);
     setProducts((productsRes.data as Product[]) ?? []);
     setClients((clientsRes.data as Client[]) ?? []);
     setSuppliers((suppliersRes.data as Supplier[]) ?? []);
+    setCashSessions((cashRes as CashSession[]) ?? []);
     setPage(1);
     if (!silent) setLoading(false);
   };
@@ -161,6 +166,26 @@ export function Reports() {
     [sales, profile]
   );
 
+  // Ventas agrupadas por día (cada página del detalle = un día).
+  const salesDays = useMemo(() => {
+    const map = new Map<string, Sale[]>();
+    for (const s of sortedSales) {
+      const day = s.created_at.slice(0, 10);
+      if (!map.has(day)) map.set(day, []);
+      map.get(day)!.push(s);
+    }
+    return Array.from(map.entries()).map(([date, items]) => ({ date, items }));
+  }, [sortedSales]);
+
+  // Historial de cajas cerradas (para el apartado "Cajas").
+  const closedCashSessions = useMemo(
+    () => cashSessions.filter((c) => c.status === 'closed'),
+    [cashSessions]
+  );
+
+  const saleProductsText = (s: Sale) =>
+    (s.sale_items ?? []).map((i) => `${i.product_name} x${i.quantity}${i.is_external ? ' (Prestado)' : ''}`).join(', ');
+
   const toggleSort = (col: string, current: { col: string; dir: SortDir }, setFn: (s: { col: string; dir: SortDir }) => void) => {
     if (current.col === col) setFn({ col, dir: current.dir === 'asc' ? 'desc' : 'asc' });
     else setFn({ col, dir: 'asc' });
@@ -206,6 +231,7 @@ export function Reports() {
     { key: 'inventario', label: 'Inventario', icon: Package },
     { key: 'clientes', label: 'Clientes', icon: Users },
     { key: 'proveedores', label: 'Proveedores', icon: Truck },
+    { key: 'cajas', label: 'Cajas', icon: Wallet },
   ];
   const tabs = isVendor ? allTabs.filter((t) => ['ventas', 'inventario'].includes(t.key)) : allTabs;
 
@@ -361,8 +387,8 @@ export function Reports() {
             <div className="px-6 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Detalle de ventas ({sortedSales.length})</h2>
               <div className="flex gap-2">
-                <button onClick={() => exportCSV(['Fecha', 'Cliente', 'Pago', 'Descuento', 'Total'], sortedSales.map((s) => [formatDateTime(s.created_at), s.client?.name ?? 'General', s.payment_method, Number(s.discount), Number(s.total)]), 'ventas')} className="btn-secondary text-xs"><FileDown size={14} /> CSV</button>
-                <button onClick={() => exportPDF('Reporte de Ventas', ['Fecha', 'Cliente', 'Pago', 'Descuento', 'Total'], sortedSales.map((s) => [formatDateTime(s.created_at), s.client?.name ?? 'General', s.payment_method, formatCurrency(Number(s.discount)), formatCurrency(Number(s.total))]))} className="btn-secondary text-xs"><FileDown size={14} /> PDF</button>
+                <button onClick={() => exportCSV(['Fecha', 'Cliente', 'Productos', 'Pago', 'Descuento', 'Total'], sortedSales.map((s) => [formatDateTime(s.created_at), s.client?.name ?? 'General', saleProductsText(s), s.payment_method, Number(s.discount), Number(s.total)]), 'ventas')} className="btn-secondary text-xs"><FileDown size={14} /> CSV</button>
+                <button onClick={() => exportPDF('Reporte de Ventas', ['Fecha', 'Cliente', 'Productos', 'Pago', 'Descuento', 'Total'], sortedSales.map((s) => [formatDateTime(s.created_at), s.client?.name ?? 'General', saleProductsText(s), s.payment_method, formatCurrency(Number(s.discount)), formatCurrency(Number(s.total))]))} className="btn-secondary text-xs"><FileDown size={14} /> PDF</button>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -370,15 +396,25 @@ export function Reports() {
                 <thead><tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30">
                   <th onClick={() => toggleSort('created_at', saleSort, setSaleSort)} className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3 cursor-pointer">Fecha <SortIcon col="created_at" current={saleSort} /></th>
                   <th onClick={() => toggleSort('client', saleSort, setSaleSort)} className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3 cursor-pointer">Cliente <SortIcon col="client" current={saleSort} /></th>
+                  <th className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Productos</th>
                   <th onClick={() => toggleSort('payment', saleSort, setSaleSort)} className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3 cursor-pointer">Pago <SortIcon col="payment" current={saleSort} /></th>
                   <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Descuento</th>
                   <th onClick={() => toggleSort('total', saleSort, setSaleSort)} className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3 cursor-pointer">Total <SortIcon col="total" current={saleSort} /></th>
                 </tr></thead>
                 <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
-                  {paginate(sortedSales).map((sale) => (
+                  {(salesDays[page - 1]?.items ?? []).map((sale) => (
                     <tr key={sale.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
-                      <td className="px-5 py-3 text-sm text-neutral-500">{formatDateTime(sale.created_at)}</td>
+                      <td className="px-5 py-3 text-sm text-neutral-500 whitespace-nowrap">{formatDateTime(sale.created_at)}</td>
                       <td className="px-5 py-3 text-sm text-neutral-700 dark:text-neutral-200">{sale.client?.name ?? 'General'}</td>
+                      <td className="px-5 py-3 text-sm text-neutral-500 max-w-[280px]">
+                        <div className="flex flex-wrap gap-1">
+                          {(sale.sale_items ?? []).map((it, idx) => (
+                            <span key={idx} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${it.is_external ? 'bg-accent-100 text-accent-700 dark:bg-accent-900/40 dark:text-accent-300' : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'}`}>
+                              {it.product_name} <span className="opacity-70">x{it.quantity}</span> {it.is_external && <span className="font-semibold">· Prestado</span>}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
                       <td className="px-5 py-3 text-sm">{sale.payment_method}</td>
                       <td className="px-5 py-3 text-sm text-right text-neutral-500">{formatCurrency(Number(sale.discount))}</td>
                       <td className="px-5 py-3 text-sm text-right font-semibold text-neutral-800 dark:text-neutral-100">{formatCurrency(Number(sale.total))}</td>
@@ -387,10 +423,14 @@ export function Reports() {
                 </tbody>
               </table>
             </div>
-            {totalPages(sortedSales) > 1 && (
+            {salesDays.length > 1 && (
               <div className="px-5 py-3 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
-                <span className="text-xs text-neutral-400">{(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, sortedSales.length)} de {sortedSales.length}</span>
-                <div className="flex gap-1"><button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 disabled:opacity-30"><ChevronLeft size={16} /></button><button onClick={() => setPage(Math.min(totalPages(sortedSales), page + 1))} disabled={page === totalPages(sortedSales)} className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 disabled:opacity-30"><ChevronRight size={16} /></button></div>
+                <span className="text-xs text-neutral-400">Día {formatDate(salesDays[page - 1]?.date ?? '')} · {salesDays[page - 1]?.items.length ?? 0} ventas · del {formatDate(salesDays[0]?.date ?? '')} al {formatDate(salesDays[salesDays.length - 1]?.date ?? '')}</span>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 disabled:opacity-30"><ChevronLeft size={16} /></button>
+                  <span className="text-xs text-neutral-400 px-1">{page}/{salesDays.length}</span>
+                  <button onClick={() => setPage(Math.min(salesDays.length, page + 1))} disabled={page === salesDays.length} className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 disabled:opacity-30"><ChevronRight size={16} /></button>
+                </div>
               </div>
             )}
           </div>
@@ -450,7 +490,10 @@ export function Reports() {
         <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Clientes ({sortedClients.length})</h2>
-            <button onClick={() => exportCSV(['Nombre', 'Apellido', 'Email', 'Teléfono', 'Documento'], sortedClients.map((c) => [c.name, c.last_name, c.email ?? '', c.phone ?? '', c.document_id ?? '']), 'clientes')} className="btn-secondary text-xs"><FileDown size={14} /> CSV</button>
+            <div className="flex gap-2">
+              <button onClick={() => exportCSV(['Nombre', 'Apellido', 'Email', 'Teléfono', 'Documento'], sortedClients.map((c) => [c.name, c.last_name, c.email ?? '', c.phone ?? '', c.document_id ?? '']), 'clientes')} className="btn-secondary text-xs"><FileDown size={14} /> CSV</button>
+              <button onClick={() => exportPDF('Reporte de Clientes', ['Nombre', 'Apellido', 'Email', 'Teléfono', 'Documento'], sortedClients.map((c) => [c.name, c.last_name ?? '', c.email ?? '', c.phone ? `${PHONE_PREFIX} ${c.phone}` : '', c.document_id ?? '']))} className="btn-secondary text-xs"><FileDown size={14} /> PDF</button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -467,7 +510,7 @@ export function Reports() {
                     <td className="px-5 py-3 text-sm font-medium text-neutral-700 dark:text-neutral-200">{c.name}</td>
                     <td className="px-5 py-3 text-sm text-neutral-500">{c.last_name}</td>
                     <td className="px-5 py-3 text-sm text-neutral-500">{c.email ?? '-'}</td>
-                    <td className="px-5 py-3 text-sm text-neutral-500">{c.phone ?? '-'}</td>
+                    <td className="px-5 py-3 text-sm text-neutral-500">{c.phone ? `${PHONE_PREFIX} ${c.phone}` : '-'}</td>
                     <td className="px-5 py-3 text-sm text-neutral-500">{c.document_id ?? '-'}</td>
                   </tr>
                 ))}
@@ -488,7 +531,10 @@ export function Reports() {
           <div className="card overflow-hidden">
             <div className="px-6 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Proveedores ({supplierStats.length})</h2>
-              <button onClick={() => exportCSV(['Proveedor', 'Productos', 'Stock Total', 'Valor Total'], supplierStats.map((s) => [s.name, s.productCount, s.stock, s.totalValue]), 'proveedores')} className="btn-secondary text-xs"><FileDown size={14} /> CSV</button>
+              <div className="flex gap-2">
+                <button onClick={() => exportCSV(['Proveedor', 'Productos', 'Stock Total', 'Valor Total'], supplierStats.map((s) => [s.name, s.productCount, s.stock, s.totalValue]), 'proveedores')} className="btn-secondary text-xs"><FileDown size={14} /> CSV</button>
+                <button onClick={() => exportPDF('Reporte de Proveedores', ['Proveedor', 'Productos', 'Stock Total', 'Valor Total'], supplierStats.map((s) => [s.name, String(s.productCount), String(s.stock), formatCurrency(s.totalValue)]))} className="btn-secondary text-xs"><FileDown size={14} /> PDF</button>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -510,6 +556,63 @@ export function Reports() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+      {activeTab === 'cajas' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="card p-5"><p className="text-sm text-neutral-400">Cierres registrados</p><p className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">{closedCashSessions.length}</p></div>
+            <div className="card p-5"><p className="text-sm text-neutral-400">Total descuentos</p><p className="text-2xl font-bold text-success-600">{formatCurrency(closedCashSessions.reduce((sum, c) => sum + (c.totals?.discount ?? 0), 0))}</p></div>
+            <div className="card p-5"><p className="text-sm text-neutral-400">Diferencia acumulada</p><p className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">{formatCurrency(closedCashSessions.reduce((sum, c) => sum + (c.difference ?? 0), 0))}</p></div>
+          </div>
+          <div className="card overflow-hidden">
+            <div className="px-6 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Historial de cajas ({closedCashSessions.length})</h2>
+              <div className="flex gap-2">
+                <button onClick={() => exportCSV(['Apertura', 'Cierre', 'Inicial', 'Efectivo', 'QR', 'Descuentos', 'Esperado', 'Contado', 'Diferencia', 'Cerró'], closedCashSessions.map((c) => [formatDateTime(c.openedAt), c.closedAt ? formatDateTime(c.closedAt) : '', c.openingAmount, c.totals?.byMethod?.['efectivo'] ?? 0, c.totals?.byMethod?.['qr'] ?? 0, c.totals?.discount ?? 0, c.expectedCash ?? 0, c.countedAmount ?? '', c.difference ?? '', c.closedByName ?? '']), 'cajas')} className="btn-secondary text-xs"><FileDown size={14} /> CSV</button>
+                <button onClick={() => exportPDF('Reporte de Cajas', ['Apertura', 'Cierre', 'Inicial', 'Efectivo', 'QR', 'Desc.', 'Esperado', 'Contado', 'Dif.', 'Cerró'], closedCashSessions.map((c) => [formatDateTime(c.openedAt), c.closedAt ? formatDateTime(c.closedAt) : '', formatCurrency(c.openingAmount), formatCurrency(c.totals?.byMethod?.['efectivo'] ?? 0), formatCurrency(c.totals?.byMethod?.['qr'] ?? 0), formatCurrency(c.totals?.discount ?? 0), formatCurrency(c.expectedCash ?? 0), c.countedAmount != null ? formatCurrency(c.countedAmount) : '', c.difference != null ? formatCurrency(c.difference) : '', c.closedByName ?? '']))} className="btn-secondary text-xs"><FileDown size={14} /> PDF</button>
+              </div>
+            </div>
+            {closedCashSessions.length === 0 ? (
+              <p className="px-6 py-4 text-sm text-neutral-400">Aún no hay cierres registrados.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full whitespace-nowrap">
+                  <thead><tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30">
+                    <th className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Apertura</th>
+                    <th className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Cierre</th>
+                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Inicial</th>
+                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Efectivo</th>
+                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">QR</th>
+                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Descuentos</th>
+                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Esperado</th>
+                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Contado</th>
+                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Diferencia</th>
+                    <th className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Cerró</th>
+                  </tr></thead>
+                  <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
+                    {closedCashSessions.map((c) => {
+                      const dif = c.difference ?? 0;
+                      return (
+                        <tr key={c.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
+                          <td className="px-5 py-3 text-sm text-neutral-600 dark:text-neutral-300">{formatDateTime(c.openedAt)}</td>
+                          <td className="px-5 py-3 text-sm text-neutral-600 dark:text-neutral-300">{c.closedAt ? formatDateTime(c.closedAt) : '—'}</td>
+                          <td className="px-5 py-3 text-sm text-right text-neutral-500">{formatCurrency(c.openingAmount)}</td>
+                          <td className="px-5 py-3 text-sm text-right text-neutral-500">{formatCurrency(c.totals?.byMethod?.['efectivo'] ?? 0)}</td>
+                          <td className="px-5 py-3 text-sm text-right text-neutral-500">{formatCurrency(c.totals?.byMethod?.['qr'] ?? 0)}</td>
+                          <td className="px-5 py-3 text-sm text-right text-success-600">{formatCurrency(c.totals?.discount ?? 0)}</td>
+                          <td className="px-5 py-3 text-sm text-right font-medium text-primary-600 dark:text-primary-400">{formatCurrency(c.expectedCash ?? 0)}</td>
+                          <td className="px-5 py-3 text-sm text-right text-neutral-700 dark:text-neutral-200">{c.countedAmount != null ? formatCurrency(c.countedAmount) : '—'}</td>
+                          <td className={`px-5 py-3 text-sm text-right font-medium ${Math.abs(dif) < 0.01 ? 'text-success-600' : dif > 0 ? 'text-warning-600' : 'text-error-600'}`}>{c.countedAmount != null ? formatCurrency(dif) : '—'}</td>
+                          <td className="px-5 py-3 text-sm text-neutral-500">{c.closedByName || '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}

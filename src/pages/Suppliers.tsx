@@ -4,7 +4,7 @@ import { supabase, Supplier, Product, formatDate } from '@/lib/supabase';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/Toast';
-import { soloLetras, soloDigitos } from '@/lib/validation';
+import { soloLetras, titleCase, normalizePhone, isValidPhone, PHONE_PREFIX } from '@/lib/validation';
 
 const emptyForm = { name: '', contact_name: '', nit: '', email: '', phone: '', address: '', notes: '' };
 
@@ -66,7 +66,13 @@ export function Suppliers() {
       return;
     }
 
-    const payload = { name: form.name, contact_name: form.contact_name || null, nit: form.nit || null, email: form.email || null, phone: form.phone || null, address: form.address || null, notes: form.notes || null };
+    if (!isValidPhone(form.phone)) {
+      show('El teléfono debe tener 8 dígitos', 'error');
+      setSaving(false);
+      return;
+    }
+
+    const payload = { name: titleCase(form.name), contact_name: titleCase(form.contact_name) || null, nit: form.nit || null, email: form.email || null, phone: normalizePhone(form.phone) || null, address: titleCase(form.address) || null, notes: form.notes || null };
     let hasError = false;
     if (editing) {
       const { error } = await supabase.from('suppliers').update(payload).eq('id', editing.id);
@@ -90,7 +96,6 @@ export function Suppliers() {
   };
 
   const getLinkedProducts = (supplierId: string) => products.filter((p) => p.supplier_id === supplierId);
-  const getTotalValue = (supplierId: string) => getLinkedProducts(supplierId).reduce((sum, p) => sum + Number(p.sale_price) * p.stock, 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -121,7 +126,6 @@ export function Suppliers() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((supplier) => {
             const linked = getLinkedProducts(supplier.id);
-            const totalValue = getTotalValue(supplier.id);
             return (
               <div key={supplier.id} className="card p-5 hover:shadow-glow transition group">
                 <div className="flex items-start justify-between mb-3">
@@ -175,7 +179,7 @@ export function Suppliers() {
           <div><label className="label">Persona de contacto</label><input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: soloLetras(e.target.value) })} className="input" /></div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className="label">Email</label><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" /></div>
-            <div><label className="label">Teléfono</label><input value={form.phone} onChange={(e) => setForm({ ...form, phone: soloDigitos(e.target.value) })} className="input" /></div>
+            <div><label className="label">Teléfono</label><div className="relative"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 text-sm pointer-events-none">{PHONE_PREFIX}</span><input value={form.phone} onChange={(e) => setForm({ ...form, phone: normalizePhone(e.target.value) })} className="input pl-14" placeholder="70000000" /></div></div>
           </div>
           <div><label className="label">Dirección</label><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input" /></div>
           <div><label className="label">Notas</label><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input min-h-[60px] resize-none" /></div>
@@ -195,7 +199,7 @@ export function Suppliers() {
             <div className="space-y-2 text-sm">
               {viewSupplier.nit && <div className="flex justify-between"><span className="text-neutral-400">NIT</span><span className="text-neutral-700 dark:text-neutral-200">{viewSupplier.nit}</span></div>}
               {viewSupplier.email && <div className="flex justify-between"><span className="text-neutral-400">Email</span><span className="text-neutral-700 dark:text-neutral-200">{viewSupplier.email}</span></div>}
-              {viewSupplier.phone && <div className="flex justify-between"><span className="text-neutral-400">Teléfono</span><span className="text-neutral-700 dark:text-neutral-200">{viewSupplier.phone}</span></div>}
+              {viewSupplier.phone && <div className="flex justify-between"><span className="text-neutral-400">Teléfono</span><span className="text-neutral-700 dark:text-neutral-200">{PHONE_PREFIX} {viewSupplier.phone}</span></div>}
               {viewSupplier.address && <div className="flex justify-between"><span className="text-neutral-400">Dirección</span><span className="text-neutral-700 dark:text-neutral-200">{viewSupplier.address}</span></div>}
               <div className="flex justify-between"><span className="text-neutral-400">Registro</span><span className="text-neutral-700 dark:text-neutral-200">{formatDate(viewSupplier.created_at)}</span></div>
             </div>

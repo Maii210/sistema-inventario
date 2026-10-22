@@ -108,6 +108,14 @@ export const productsApi = {
   delete: (id: string) => request<void>(`/products/${id}`, { method: 'DELETE' }),
 };
 
+// ─── Lotes (ProductBatch) ──────────────────────────────────
+export const batchesApi = {
+  add: (productId: string, data: { quantity: number; expiryDate?: string | null }) =>
+    request<ApiProduct>(`/products/${productId}/batches`, { method: 'POST', body: JSON.stringify(data) }),
+  remove: (productId: string, batchId: string) =>
+    request<ApiProduct>(`/products/${productId}/batches/${batchId}`, { method: 'DELETE' }),
+};
+
 // ─── Sales ─────────────────────────────────────────────────
 export interface ApiSaleItem {
   id: string;
@@ -168,6 +176,10 @@ export interface CashSession {
   openedByName: string | null;
   closedAt: string | null;
   countedAmount: number | null;
+  qrCounted: number | null;
+  expectedCashManual: number | null;
+  expectedQrManual: number | null;
+  leftInCash: number | null;
   closedByName: string | null;
   status: 'open' | 'closed';
   notes: string | null;
@@ -187,7 +199,7 @@ export const cashApi = {
   history: () => request<CashSession[]>('/cash'),
   open: (data: { openingAmount: number; openedById?: string; openedByName?: string }) =>
     request<CashSession>('/cash/open', { method: 'POST', body: JSON.stringify(data) }),
-  close: (id: string, data: { countedAmount: number; closedById?: string; closedByName?: string; notes?: string }) =>
+  close: (id: string, data: { countedAmount: number; qrCounted?: number; expectedCashManual?: number; expectedQrManual?: number; leftInCash?: number; closedById?: string; closedByName?: string; notes?: string }) =>
     request<CashSession>(`/cash/${id}/close`, { method: 'POST', body: JSON.stringify(data) }),
 };
 

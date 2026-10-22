@@ -1,13 +1,14 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Plus, Search, ScanLine, Edit2, Trash2, Package, AlertTriangle, Loader2, Filter, X, ChevronDown, LayoutGrid, List, Percent } from 'lucide-react';
-import { supabase, Product, Supplier, ProductCategory, formatCurrency, formatDate } from '@/lib/supabase';
+import { Plus, Search, ScanLine, Edit2, Trash2, Package, AlertTriangle, Loader2, Filter, X, LayoutGrid, List, Percent, Layers } from 'lucide-react';
+import { supabase, Product, Supplier, formatCurrency, formatDate } from '@/lib/supabase';
+import { batchesApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { Pager } from '@/components/ui/Pager';
 import { useToast } from '@/components/ui/Toast';
-import { soloEnteros, soloDecimales, capitalizeFirst } from '@/lib/validation';
+import { soloEnteros, soloDecimales, titleCase } from '@/lib/validation';
 
 const emptyForm = {
   name: '', barcode: '', category: '', brand: '', description: '',
@@ -109,6 +110,8 @@ export function Products() {
 
   const openEdit = (product: Product) => {
     setEditing(product);
+    setShowReponer(false);
+    setBatchQty(''); setBatchExpiry('');
     setNewCategory('');
     setForm({
       name: product.name, barcode: product.barcode ?? '', category: product.category,
@@ -121,20 +124,64 @@ export function Products() {
     setModalOpen(true);
   };
 
+  // ─── Lotes ───────────────────────────────────────────────
+  const [batchQty, setBatchQty] = useState('');
+  const [batchExpiry, setBatchExpiry] = useState('');
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [showReponer, setShowReponer] = useState(false);
+
+  // Vuelve a cargar el producto en edición (y la lista) tras cambiar lotes.
+  const reloadEditing = async () => {
+    await loadProducts(true);
+    if (editing) {
+      const { data } = await supabase.from('products').select('*').eq('id', editing.id).single();
+      const p = data as Product | null;
+      if (p) {
+        setEditing(p);
+        setForm((f) => ({ ...f, stock: String(p.stock), expiry_date: p.expiry_date ? p.expiry_date.slice(0, 10) : '' }));
+      }
+    }
+  };
+
+  const handleAddBatch = async () => {
+    if (!editing) return;
+    const qty = parseInt(batchQty);
+    if (!qty || qty < 1) { show('Ingresa una cantidad válida', 'error'); return; }
+    setBatchBusy(true);
+    try {
+      await batchesApi.add(editing.id, { quantity: qty, expiryDate: batchExpiry ? new Date(batchExpiry).toISOString() : null });
+      setBatchQty(''); setBatchExpiry(''); setShowReponer(false);
+      await reloadEditing();
+      show('Stock repuesto (lote agregado)');
+    } catch (e: any) { show(e.message || 'Error al agregar lote', 'error'); }
+    setBatchBusy(false);
+  };
+
+  const handleRemoveBatch = async (batchId: string) => {
+    if (!editing) return;
+    setBatchBusy(true);
+    try {
+      await batchesApi.remove(editing.id, batchId);
+      await reloadEditing();
+      show('Lote eliminado');
+    } catch (e: any) { show(e.message || 'Error al eliminar lote', 'error'); }
+    setBatchBusy(false);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
-    const cat = newCategory.trim() || form.category;
+    const cat = titleCase(newCategory.trim() || form.category);
     if (!cat) { show('Selecciona o crea una categoría', 'error'); setSaving(false); return; }
 
     const payload = {
-      name: capitalizeFirst(form.name), barcode: form.barcode || null, category: cat,
-      brand: form.brand ? capitalizeFirst(form.brand) : null, description: form.description || null,
+      name: titleCase(form.name), barcode: form.barcode || null, category: cat,
+      brand: form.brand ? titleCase(form.brand) : null, description: form.description || null,
       cost_price: parseFloat(form.cost_price) || 0, sale_price: parseFloat(form.sale_price) || 0,
       stock: parseInt(form.stock) || 0, min_stock: parseInt(form.min_stock) || 0,
       supplier_id: form.supplier_id || null, active: form.active,
-      use: form.use ? capitalizeFirst(form.use) : null,
+      use: form.use ? titleCase(form.use) : null,
       expiry_date: form.expiry_date ? new Date(form.expiry_date).toISOString() : null,
     };
 
@@ -407,8 +454,9 @@ export function Products() {
             </div>
 
             <div>
-              <label className="label">Fecha de caducidad</label>
-              <input type="date" value={form.expiry_date} onChange={(e) => setForm({ ...form, expiry_date: e.target.value })} className="input" />
+              <label className="label">Fecha de caducidad {editing ? '(lote más próximo)' : ''}</label>
+              <input type="date" value={form.expiry_date} onChange={(e) => setForm({ ...form, expiry_date: e.target.value })} className={`input ${editing ? 'bg-neutral-100 dark:bg-neutral-800 cursor-default' : ''}`} readOnly={!!editing} />
+              {editing && <p className="text-xs text-neutral-400 mt-1">Se gestiona por lotes (abajo).</p>}
             </div>
 
             <div>
@@ -444,8 +492,9 @@ export function Products() {
             </div>
 
             <div>
-              <label className="label">Stock *</label>
-              <input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: soloEnteros(e.target.value) })} className="input" required />
+              <label className="label">Stock {editing ? '(suma de lotes)' : '*'}</label>
+              <input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: soloEnteros(e.target.value) })} className={`input ${editing ? 'bg-neutral-100 dark:bg-neutral-800 cursor-default' : ''}`} readOnly={!!editing} required={!editing} />
+              {editing && <p className="text-xs text-neutral-400 mt-1">Se gestiona por lotes (abajo).</p>}
             </div>
 
             <div>
@@ -455,6 +504,49 @@ export function Products() {
                 <p className="text-xs text-error-600 dark:text-error-400 mt-1">⚠ Stock en o bajo el mínimo</p>
               )}
             </div>
+
+            {editing && (
+              <div className="sm:col-span-2 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Layers size={16} className="text-primary-500" />
+                  <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">Lotes (cantidad y fecha de caducidad)</p>
+                </div>
+                {(editing.batches?.length ?? 0) === 0 ? (
+                  <p className="text-xs text-neutral-400 mb-3">Este producto no tiene lotes. Agrega uno para controlar su caducidad.</p>
+                ) : (
+                  <div className="space-y-1.5 mb-3">
+                    {editing.batches!.map((b) => (
+                      <div key={b.id} className="flex items-center justify-between gap-3 text-sm py-1 border-b border-neutral-100 dark:border-neutral-800 last:border-0">
+                        <span className="text-neutral-700 dark:text-neutral-200 font-medium">{b.quantity} u.</span>
+                        <span className="text-neutral-500 dark:text-neutral-400 flex-1 text-right">{b.expiry_date ? `Vence: ${formatDate(b.expiry_date)}` : 'Sin fecha'}</span>
+                        <button type="button" onClick={() => handleRemoveBatch(b.id)} disabled={batchBusy} className="p-1 rounded text-neutral-400 hover:text-error-600 disabled:opacity-40"><Trash2 size={14} /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!showReponer ? (
+                  <button type="button" onClick={() => setShowReponer(true)} className="btn-secondary w-full sm:w-auto"><Plus size={16} /> Reponer stock</button>
+                ) : (
+                  <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800/40 p-3 space-y-2">
+                    <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Nuevo lote (reposición)</p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="sm:w-36">
+                        <label className="label">Cantidad</label>
+                        <input type="number" min="1" value={batchQty} onChange={(e) => setBatchQty(soloEnteros(e.target.value))} className="input" placeholder="0" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="label">Fecha de caducidad</label>
+                        <input type="date" value={batchExpiry} onChange={(e) => setBatchExpiry(e.target.value)} className="input" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => { setShowReponer(false); setBatchQty(''); setBatchExpiry(''); }} className="btn-secondary flex-1">Cancelar</button>
+                      <button type="button" onClick={handleAddBatch} disabled={batchBusy} className="btn-primary flex-1">{batchBusy ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Agregar lote</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="sm:col-span-2">
               <label className="label">Descripción</label>

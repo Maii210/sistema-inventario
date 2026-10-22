@@ -1,12 +1,12 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Plus, Edit2, Trash2, UserCog, Loader2, Shield, Phone, CheckCircle, XCircle, Eye, Search, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, Shield, CheckCircle, XCircle, Eye, Search, X } from 'lucide-react';
 import { supabase, Profile, Role } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/supabase';
-import { soloLetras, soloDigitos } from '@/lib/validation';
+import { soloLetras, titleCase, normalizePhone, isValidPhone, PHONE_PREFIX } from '@/lib/validation';
 
 const roleLabels: Record<Role, string> = {
   vendedor: 'Vendedor',
@@ -80,9 +80,12 @@ export function Users() {
     e.preventDefault();
     setSaving(true);
 
+    const fullName = titleCase(form.full_name);
+    const lastName = titleCase(form.last_name);
+
     const duplicate = users.find(
-      (u) => u.full_name.toLowerCase() === form.full_name.toLowerCase() &&
-             u.last_name.toLowerCase() === form.last_name.toLowerCase() &&
+      (u) => u.full_name.toLowerCase() === fullName.toLowerCase() &&
+             u.last_name.toLowerCase() === lastName.toLowerCase() &&
              u.id !== editing?.id
     );
     if (duplicate) {
@@ -91,11 +94,18 @@ export function Users() {
       return;
     }
 
+    if (!isValidPhone(form.phone) || form.phone.length === 0) {
+      show('El teléfono debe tener 8 dígitos', 'error');
+      setSaving(false);
+      return;
+    }
+
+    const phone = normalizePhone(form.phone);
     if (editing) {
       const { error } = await supabase.from('profiles').update({
-        full_name: form.full_name,
-        last_name: form.last_name,
-        phone: form.phone,
+        full_name: fullName,
+        last_name: lastName,
+        phone,
         email: form.email || null,
         document_id: form.document_id || null,
         role: form.role,
@@ -104,15 +114,10 @@ export function Users() {
       if (error) show(error.message, 'error');
       else { show('Usuario actualizado'); setModalOpen(false); loadUsers(true); }
     } else {
-      if (form.phone.length < 8) {
-        show('El teléfono debe tener al menos 8 dígitos', 'error');
-        setSaving(false);
-        return;
-      }
       const { error: signUpError } = await supabase.auth.signUp({
         email: form.email || undefined,
         password: form.password || 'default123',
-        options: { data: { full_name: form.full_name, last_name: form.last_name, phone: form.phone, document_id: form.document_id, role: form.role } },
+        options: { data: { full_name: fullName, last_name: lastName, phone, document_id: form.document_id, role: form.role } },
       });
       if (signUpError) { show(signUpError.message, 'error'); setSaving(false); return; }
       show('Usuario creado correctamente');
@@ -257,8 +262,8 @@ export function Users() {
           <div>
             <label className="label">Teléfono *</label>
             <div className="relative">
-              <Phone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: soloDigitos(e.target.value) })} className="input pl-11" required minLength={8} placeholder="70000000" />
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 text-sm pointer-events-none">{PHONE_PREFIX}</span>
+              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: normalizePhone(e.target.value) })} className="input pl-14" required minLength={8} maxLength={8} placeholder="70000000" />
             </div>
           </div>
           <div>
@@ -325,7 +330,7 @@ export function Users() {
               </div>
             </div>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-neutral-400">Teléfono</span><span className="text-neutral-700 dark:text-neutral-200">{viewUser.phone || '-'}</span></div>
+              <div className="flex justify-between"><span className="text-neutral-400">Teléfono</span><span className="text-neutral-700 dark:text-neutral-200">{viewUser.phone ? `${PHONE_PREFIX} ${viewUser.phone}` : '-'}</span></div>
               <div className="flex justify-between"><span className="text-neutral-400">Correo</span><span className="text-neutral-700 dark:text-neutral-200">{viewUser.email || '-'}</span></div>
               <div className="flex justify-between"><span className="text-neutral-400">C.I.</span><span className="text-neutral-700 dark:text-neutral-200">{viewUser.document_id || '-'}</span></div>
               <div className="flex justify-between"><span className="text-neutral-400">Estado</span><span className={viewUser.active ? 'text-success-600' : 'text-error-600'}>{viewUser.active ? 'Activo' : 'Inactivo'}</span></div>

@@ -1,12 +1,12 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import {
-  DollarSign,
   ShoppingCart,
   Package,
   Users,
   TrendingUp,
   AlertTriangle,
   Receipt,
+  CalendarClock,
 } from 'lucide-react';
 import {
   BarChart,
@@ -21,7 +21,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { supabase, Sale, Product, formatCurrency, formatDateTime, CATEGORIES } from '@/lib/supabase';
+import { supabase, Sale, Product, formatCurrency, formatDateTime, formatDate, CATEGORIES } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 
 type Period = 'today' | 'week' | 'month' | 'year';
@@ -32,9 +32,9 @@ export function Dashboard() {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('month');
-  const [todaySales, setTodaySales] = useState<Sale[]>([]);
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
+  const [expiringProducts, setExpiringProducts] = useState<Product[]>([]);
   const [stats, setStats] = useState({
     todayTotal: 0,
     todayCount: 0,
@@ -87,9 +87,16 @@ export function Dashboard() {
     const periodData = allSales.filter((s: any) => new Date(s.created_at) >= startDate);
     const recentData = allSales.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5);
 
-    setTodaySales(todaySalesData);
     setRecentSales(recentData);
     setLowStockProducts(productsData.filter((p: any) => p.stock <= p.min_stock));
+
+    // Productos próximos a vencer (con fecha dentro de los próximos 30 días, o ya vencidos).
+    const expirySoon = new Date(now); expirySoon.setDate(now.getDate() + 30);
+    setExpiringProducts(
+      productsData
+        .filter((p: any) => p.expiry_date && new Date(p.expiry_date) <= expirySoon)
+        .sort((a: any, b: any) => new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime())
+    );
 
     setStats({
       todayTotal: todaySalesData.reduce((sum: number, s: any) => sum + Number(s.total), 0),
@@ -265,7 +272,7 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 card p-6">
+        <div className="card p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Ventas recientes</h2>
             <Receipt size={20} className="text-neutral-300 dark:text-neutral-600" />
@@ -301,6 +308,38 @@ export function Dashboard() {
 
         <div className="card p-6">
           <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Por vencer</h2>
+            <CalendarClock size={20} className={expiringProducts.length > 0 ? 'text-warning-500' : 'text-neutral-300 dark:text-neutral-600'} />
+          </div>
+          {expiringProducts.length === 0 ? (
+            <div className="py-10 text-center text-neutral-400 dark:text-neutral-500 text-sm">
+              No hay productos próximos a vencer.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {expiringProducts.slice(0, 5).map((product) => {
+                const exp = new Date(product.expiry_date as string); exp.setHours(0, 0, 0, 0);
+                const t = new Date(); t.setHours(0, 0, 0, 0);
+                const days = Math.round((exp.getTime() - t.getTime()) / 86400000);
+                const expired = days < 0;
+                return (
+                  <div key={product.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200 truncate">{product.name}</p>
+                      <p className="text-xs text-neutral-400 dark:text-neutral-500">Vence: {formatDate(product.expiry_date as string)}</p>
+                    </div>
+                    <span className={`badge ${expired ? 'bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300' : 'bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300'}`}>
+                      {expired ? 'Vencido' : `${days} d`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="card p-6">
+          <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Stock bajo</h2>
             <AlertTriangle size={20} className={lowStockProducts.length > 0 ? 'text-error-500' : 'text-neutral-300 dark:text-neutral-600'} />
           </div>
@@ -316,7 +355,7 @@ export function Dashboard() {
                     <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200 truncate">{product.name}</p>
                     <p className="text-xs text-neutral-400 dark:text-neutral-500">{product.category}</p>
                   </div>
-                  <span className={`badge ${product.stock === 0 ? 'bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300' : 'bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300'}`}>
+                  <span className="badge bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300">
                     {product.stock} und.
                   </span>
                 </div>

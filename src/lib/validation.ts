@@ -29,3 +29,26 @@ export function capitalizeFirst(value: string): string {
   if (!v) return v;
   return v.charAt(0).toUpperCase() + v.slice(1);
 }
+
+// Formato Título: primera letra de cada palabra en mayúscula, el resto en minúscula.
+// "PEDRO" -> "Pedro", "MARIA DE LA CRUZ" -> "Maria De La Cruz".
+export function titleCase(value: string): string {
+  return value
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/(^|[\s\-'])([a-záéíóúüñ])/g, (_m, sep, ch) => sep + ch.toUpperCase());
+}
+
+// Teléfono Bolivia: solo dígitos, máximo 8.
+export const PHONE_PREFIX = '+591';
+export const PHONE_LENGTH = 8;
+
+export function normalizePhone(value: string): string {
+  return value.replace(/\D/g, '').slice(0, PHONE_LENGTH);
+}
+
+export function isValidPhone(value: string): boolean {
+  const v = value.trim();
+  return v.length === 0 || new RegExp(`^\\d{${PHONE_LENGTH}}$`).test(v);
+}

@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { ScanLine, Search, Plus, Minus, Trash2, ShoppingCart, X, Loader2, Receipt, Printer, CheckCircle, User as UserIcon, Camera, MessageCircle, FileDown, PackagePlus, LayoutGrid, List } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { ScanLine, Search, Plus, Minus, Trash2, ShoppingCart, X, Loader2, Receipt, Printer, CheckCircle, User as UserIcon, MessageCircle, FileDown, PackagePlus, LayoutGrid, List } from 'lucide-react';
 import { supabase, Product, Client, Profile, Sale, PaymentMethod, formatCurrency, formatDateTime } from '@/lib/supabase';
-import { soloLetras, soloDigitos } from '@/lib/validation';
-import { settingsApi } from '@/lib/api';
+import { soloLetras, titleCase, normalizePhone, isValidPhone, PHONE_PREFIX } from '@/lib/validation';
+import { settingsApi, cashApi, CashSession } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { Modal } from '@/components/ui/Modal';
@@ -46,9 +46,8 @@ function readPersistedSale(key: string): Partial<PersistedSale> {
 }
 
 export function Sales() {
-  const { profile, user } = useAuth();
+  const { user } = useAuth();
   const { show } = useToast();
-  const qrInputRef = useRef<HTMLInputElement>(null);
   const cartKey = cartKeyFor(user?.id);
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -81,11 +80,14 @@ export function Sales() {
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [clientForm, setClientForm] = useState({ name: '', last_name: '', document_id: '', phone: '', email: '', address: '' });
   const [savingClient, setSavingClient] = useState(false);
+  const [cashSession, setCashSession] = useState<CashSession | null>(null);
+  const cashOpen = !!cashSession && cashSession.status === 'open';
 
   useEffect(() => { loadData(); }, []);
   useEffect(() => { setPage(1); }, [search, viewMode]);
   useEffect(() => {
     settingsApi.get('bank_qr').then((s) => setBankQr(s?.value || '')).catch(() => setBankQr(''));
+    cashApi.current().then((s) => setCashSession(s)).catch(() => setCashSession(null));
   }, []);
   // Mantiene la venta en curso (carrito, cliente, vendedora, etc.) al cambiar de módulo o recargar.
   useEffect(() => {
@@ -95,7 +97,7 @@ export function Sales() {
   }, [cartKey, cart, selectedClient, selectedSeller, paymentMethod, globalDiscount, notes]);
 
   const addExternalItem = () => {
-    const name = extForm.name.trim();
+    const name = titleCase(extForm.name);
     const price = parseFloat(extForm.price) || 0;
     const cost = parseFloat(extForm.cost) || 0;
     const qty = Math.max(parseInt(extForm.qty) || 1, 1);
@@ -115,10 +117,11 @@ export function Sales() {
   const handleCreateClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientForm.name.trim() || !clientForm.last_name.trim()) { show('Nombre y apellido son obligatorios', 'error'); return; }
+    if (!isValidPhone(clientForm.phone)) { show('El teléfono debe tener 8 dígitos', 'error'); return; }
     setSavingClient(true);
     const payload = {
-      name: clientForm.name, last_name: clientForm.last_name,
-      document_id: clientForm.document_id || null, phone: clientForm.phone || null,
+      name: titleCase(clientForm.name), last_name: titleCase(clientForm.last_name),
+      document_id: clientForm.document_id || null, phone: normalizePhone(clientForm.phone) || null,
       email: clientForm.email || null, address: clientForm.address || null, notes: null,
     };
     const { data, error } = await supabase.from('clients').insert(payload).select().single();
@@ -203,16 +206,16 @@ export function Sales() {
     setScannerOpen(false);
   };
 
-  const handleQrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setQrImage(ev.target?.result as string);
-    reader.readAsDataURL(file);
-  };
 
   const completeSale = async () => {
     if (cart.length === 0) { show('El carrito está vacío', 'error'); return; }
+    // Doble verificación: no se puede vender si la caja está cerrada.
+    const current = await cashApi.current().catch(() => null);
+    setCashSession(current);
+    if (!current || current.status !== 'open') {
+      show('Debes abrir la caja antes de registrar ventas', 'error');
+      return;
+    }
     setCompleting(true);
 
     // Los ítems van en línea: el backend persiste la venta + ítems y descuenta
@@ -256,7 +259,7 @@ export function Sales() {
   };
 
   const loadRecentSales = async () => {
-    const { data } = await supabase.from('sales').select('*, client:clients(*), seller:profiles(*)').order('created_at', { ascending: false }).limit(10);
+    const { data } = await supabase.from('sales').select('*, client:clients(*), seller:profiles(*), sale_items(*)').order('created_at', { ascending: false }).limit(10);
     setRecentSales((data as Sale[]) ?? []);
   };
 
@@ -278,7 +281,8 @@ export function Sales() {
     doc.setFont('helvetica', 'normal');
     sale.sale_items?.forEach((item) => {
       doc.setFontSize(6);
-      const name = item.product_name.length > 18 ? item.product_name.slice(0, 18) + '...' : item.product_name;
+      const base = item.is_external ? `${item.product_name} (Prestado)` : item.product_name;
+      const name = base.length > 18 ? base.slice(0, 18) + '...' : base;
       doc.text(name, 5, y); doc.text(String(item.quantity), 52, y); doc.text(formatCurrency(Number(item.subtotal)), 60, y); y += 4;
     });
     y += 2; doc.line(5, y, 75, y); y += 5;
@@ -297,10 +301,11 @@ export function Sales() {
     if (!phone) { show('El cliente no tiene teléfono registrado', 'error'); return; }
     let msg = `*Comercial Camila*\nFactura: ${sale.invoice_number.slice(0, 8).toUpperCase()}\nFecha: ${formatDateTime(sale.created_at)}\n`;
     msg += `Cliente: ${sale.client?.name ?? 'General'}\n\n`;
-    sale.sale_items?.forEach((item) => { msg += `${item.product_name} x${item.quantity} = ${formatCurrency(Number(item.subtotal))}\n`; });
+    sale.sale_items?.forEach((item) => { msg += `${item.is_external ? `${item.product_name} (Prestado)` : item.product_name} x${item.quantity} = ${formatCurrency(Number(item.subtotal))}\n`; });
     msg += `\n*Total: ${formatCurrency(Number(sale.total))}*\n¡Gracias por su compra!`;
     const cleanPhone = phone.replace(/\D/g, '');
-    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+    const waPhone = cleanPhone.length === 8 ? `591${cleanPhone}` : cleanPhone;
+    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-3 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
@@ -318,6 +323,13 @@ export function Sales() {
           <button onClick={() => setScannerOpen(true)} className="btn-primary"><ScanLine size={18} /> Escanear</button>
         </div>
       </div>
+
+      {!cashOpen && (
+        <div className="flex items-center gap-3 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          <Receipt size={18} className="shrink-0" />
+          <span>La caja está cerrada. Abre la caja en el módulo <strong>Caja</strong> para poder registrar ventas.</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3 space-y-4">
@@ -496,7 +508,8 @@ export function Sales() {
                 </div>
 
                 <div className="flex gap-2">
-                  <button onClick={completeSale} className="btn-primary flex-1 py-3" disabled={completing}>{completing ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />} Vender</button>
+                  <button onClick={completeSale} className="btn-primary flex-1 py-3" title={!cashOpen ? 'Debes abrir la caja primero' : undefined}
+                    disabled={completing || !cashOpen}>{completing ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />} Vender</button>
                 </div>
               </div>
             )}
@@ -555,7 +568,7 @@ export function Sales() {
           </div>
           <div><label className="label">Carnet (opcional)</label><input value={clientForm.document_id} onChange={(e) => setClientForm({ ...clientForm, document_id: e.target.value })} className="input" placeholder="12345678" /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Teléfono</label><input value={clientForm.phone} onChange={(e) => setClientForm({ ...clientForm, phone: soloDigitos(e.target.value) })} className="input" /></div>
+            <div><label className="label">Teléfono</label><div className="relative"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 text-sm pointer-events-none">{PHONE_PREFIX}</span><input value={clientForm.phone} onChange={(e) => setClientForm({ ...clientForm, phone: normalizePhone(e.target.value) })} className="input pl-14" placeholder="70000000" /></div></div>
             <div><label className="label">Email</label><input type="email" value={clientForm.email} onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })} className="input" /></div>
           </div>
           <div><label className="label">Dirección</label><input value={clientForm.address} onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })} className="input" /></div>
@@ -580,7 +593,7 @@ export function Sales() {
               <div className="border-t border-dashed border-neutral-200 dark:border-neutral-700 pt-3 space-y-2">
                 {lastSale.sale_items.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm">
-                    <div><p className="text-neutral-700 dark:text-neutral-200">{item.product_name}</p><p className="text-xs text-neutral-400">{item.quantity} x {formatCurrency(Number(item.unit_price))}</p></div>
+                    <div><p className="text-neutral-700 dark:text-neutral-200">{item.product_name}{item.is_external && <span className="ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-accent-100 text-accent-700 dark:bg-accent-900/40 dark:text-accent-300 align-middle">Prestado</span>}</p><p className="text-xs text-neutral-400">{item.quantity} x {formatCurrency(Number(item.unit_price))}</p></div>
                     <span className="text-neutral-700 dark:text-neutral-200 font-medium">{formatCurrency(Number(item.subtotal))}</span>
                   </div>
                 ))}
@@ -611,7 +624,7 @@ export function Sales() {
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center text-primary-600"><Receipt size={18} /></div>
                   <div>
-                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{sale.client?.name ?? 'General'}</p>
+                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{sale.client?.name ?? 'General'}{sale.sale_items?.some((i) => i.is_external) && <span className="ml-1.5 badge bg-accent-100 text-accent-700 dark:bg-accent-900/40 dark:text-accent-300 align-middle">Prestado</span>}</p>
                     <p className="text-xs text-neutral-400">{formatDateTime(sale.created_at)} · {sale.payment_method}</p>
                   </div>
                 </div>
