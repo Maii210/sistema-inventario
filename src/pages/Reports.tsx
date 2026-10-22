@@ -570,8 +570,8 @@ export function Reports() {
             <div className="px-6 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Historial de cajas ({closedCashSessions.length})</h2>
               <div className="flex gap-2">
-                <button onClick={() => exportCSV(['Apertura', 'Cierre', 'Inicial', 'Efectivo', 'QR', 'Descuentos', 'Esperado', 'Contado', 'Diferencia', 'Cerró'], closedCashSessions.map((c) => [formatDateTime(c.openedAt), c.closedAt ? formatDateTime(c.closedAt) : '', c.openingAmount, c.totals?.byMethod?.['efectivo'] ?? 0, c.totals?.byMethod?.['qr'] ?? 0, c.totals?.discount ?? 0, c.expectedCash ?? 0, c.countedAmount ?? '', c.difference ?? '', c.closedByName ?? '']), 'cajas')} className="btn-secondary text-xs"><FileDown size={14} /> CSV</button>
-                <button onClick={() => exportPDF('Reporte de Cajas', ['Apertura', 'Cierre', 'Inicial', 'Efectivo', 'QR', 'Desc.', 'Esperado', 'Contado', 'Dif.', 'Cerró'], closedCashSessions.map((c) => [formatDateTime(c.openedAt), c.closedAt ? formatDateTime(c.closedAt) : '', formatCurrency(c.openingAmount), formatCurrency(c.totals?.byMethod?.['efectivo'] ?? 0), formatCurrency(c.totals?.byMethod?.['qr'] ?? 0), formatCurrency(c.totals?.discount ?? 0), formatCurrency(c.expectedCash ?? 0), c.countedAmount != null ? formatCurrency(c.countedAmount) : '', c.difference != null ? formatCurrency(c.difference) : '', c.closedByName ?? '']))} className="btn-secondary text-xs"><FileDown size={14} /> PDF</button>
+                <button onClick={() => exportCSV(['Apertura', 'Cierre', 'Inicial', 'Ventas efectivo', 'Ventas QR', 'Descuentos', 'Efectivo esperado', 'Efectivo contado', 'Diferencia', 'Cerró'], closedCashSessions.map((c) => [formatDateTime(c.openedAt), c.closedAt ? formatDateTime(c.closedAt) : '', c.openingAmount, c.totals?.byMethod?.['efectivo'] ?? 0, c.totals?.byMethod?.['qr'] ?? 0, c.totals?.discount ?? 0, c.expectedCash ?? 0, c.countedAmount ?? '', c.difference ?? '', c.closedByName ?? '']), 'cajas')} className="btn-secondary text-xs"><FileDown size={14} /> CSV</button>
+                <button onClick={() => exportPDF('Reporte de Cajas', ['Apertura', 'Cierre', 'Inicial', 'Vta. efvo.', 'Vta. QR', 'Desc.', 'Efvo. esperado', 'Efvo. contado', 'Dif.', 'Cerró'], closedCashSessions.map((c) => [formatDateTime(c.openedAt), c.closedAt ? formatDateTime(c.closedAt) : '', formatCurrency(c.openingAmount), formatCurrency(c.totals?.byMethod?.['efectivo'] ?? 0), formatCurrency(c.totals?.byMethod?.['qr'] ?? 0), formatCurrency(c.totals?.discount ?? 0), formatCurrency(c.expectedCash ?? 0), c.countedAmount != null ? formatCurrency(c.countedAmount) : '', c.difference != null ? formatCurrency(c.difference) : '', c.closedByName ?? '']))} className="btn-secondary text-xs"><FileDown size={14} /> PDF</button>
               </div>
             </div>
             {closedCashSessions.length === 0 ? (
@@ -583,11 +583,11 @@ export function Reports() {
                     <th className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Apertura</th>
                     <th className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Cierre</th>
                     <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Inicial</th>
-                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Efectivo</th>
-                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">QR</th>
+                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Ventas efectivo</th>
+                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Ventas QR</th>
                     <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Descuentos</th>
-                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Esperado</th>
-                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Contado</th>
+                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Efectivo esperado</th>
+                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Efectivo contado</th>
                     <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Diferencia</th>
                     <th className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Cerró</th>
                   </tr></thead>

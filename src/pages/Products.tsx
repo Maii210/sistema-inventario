@@ -12,10 +12,27 @@ import { soloEnteros, soloDecimales, titleCase } from '@/lib/validation';
 
 const emptyForm = {
   name: '', barcode: '', category: '', brand: '', description: '',
-  cost_price: '', sale_price: '', stock: '', min_stock: '5',
+  cost_price: '', sale_price: '', margin: '', stock: '', min_stock: '5',
   supplier_id: '', active: true,
   use: '', expiry_date: '',
 };
+
+// Margen a partir de costo y venta, en la unidad elegida (Bs o %).
+function calcMargin(costStr: string, saleStr: string, unit: 'bs' | '%'): string {
+  if (costStr === '' || saleStr === '') return '';
+  const cost = parseFloat(costStr) || 0;
+  const sale = parseFloat(saleStr) || 0;
+  if (unit === '%') return cost > 0 ? ((sale - cost) / cost * 100).toFixed(1) : '';
+  return (sale - cost).toFixed(2);
+}
+
+// Precio de venta a partir de costo y margen, en la unidad elegida.
+function calcSale(costStr: string, marginStr: string, unit: 'bs' | '%'): string {
+  if (costStr === '' || marginStr === '') return '';
+  const cost = parseFloat(costStr) || 0;
+  const m = parseFloat(marginStr) || 0;
+  return unit === '%' ? (cost * (1 + m / 100)).toFixed(2) : (cost + m).toFixed(2);
+}
 
 // Lista fija de "Uso" para subcategorizar los productos.
 const USES = ['Facial', 'Corporal', 'Capilar', 'Manos/Uñas', 'Maquillaje', 'Otro'];
@@ -55,7 +72,25 @@ export function Products() {
     try { return (localStorage.getItem('camila_margin_unit') as 'bs' | '%') || 'bs'; } catch { return 'bs'; }
   });
   useEffect(() => { try { localStorage.setItem('camila_margin_unit', marginUnit); } catch { /* ignore */ } }, [marginUnit]);
-  const toggleMarginUnit = () => setMarginUnit((m) => (m === 'bs' ? '%' : 'bs'));
+  const toggleMarginUnit = () => {
+    const next = marginUnit === 'bs' ? '%' : 'bs';
+    setMarginUnit(next);
+    setForm((f) => ({ ...f, margin: calcMargin(f.cost_price, f.sale_price, next) }));
+  };
+
+  // Margen bidireccional: según dónde se escribe, se calcula lo demás.
+  const handleCostChange = (raw: string) => {
+    const cost = soloDecimales(raw);
+    setForm((f) => ({ ...f, cost_price: cost, margin: calcMargin(cost, f.sale_price, marginUnit) }));
+  };
+  const handleSaleChange = (raw: string) => {
+    const sale = soloDecimales(raw);
+    setForm((f) => ({ ...f, sale_price: sale, margin: calcMargin(f.cost_price, sale, marginUnit) }));
+  };
+  const handleMarginChange = (raw: string) => {
+    const margin = soloDecimales(raw);
+    setForm((f) => ({ ...f, margin, sale_price: f.cost_price !== '' && margin !== '' ? calcSale(f.cost_price, margin, marginUnit) : f.sale_price }));
+  };
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -117,6 +152,7 @@ export function Products() {
       name: product.name, barcode: product.barcode ?? '', category: product.category,
       brand: product.brand ?? '', description: product.description ?? '',
       cost_price: String(product.cost_price), sale_price: String(product.sale_price),
+      margin: calcMargin(String(product.cost_price), String(product.sale_price), marginUnit),
       stock: String(product.stock), min_stock: String(product.min_stock),
       supplier_id: product.supplier_id ?? '', active: product.active,
       use: product.use ?? '', expiry_date: product.expiry_date ? product.expiry_date.slice(0, 10) : '',
@@ -224,9 +260,6 @@ export function Products() {
   const saleNum = parseFloat(form.sale_price) || 0;
   const marginNum = saleNum - costNum;
   const marginPctNum = costNum > 0 ? (marginNum / costNum) * 100 : 0;
-  const marginBsDisplay = form.cost_price !== '' && form.sale_price !== '' ? marginNum.toFixed(2) : '';
-  const marginPctDisplay = costNum > 0 && form.sale_price !== '' ? `${marginPctNum.toFixed(1)}` : '';
-  const marginFieldValue = marginUnit === 'bs' ? marginBsDisplay : marginPctDisplay;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -469,7 +502,7 @@ export function Products() {
 
             <div>
               <label className="label">Precio costo *</label>
-              <input type="number" step="0.01" min="0" value={form.cost_price} onChange={(e) => setForm({ ...form, cost_price: soloDecimales(e.target.value) })} className="input" required />
+              <input type="number" step="0.01" min="0" value={form.cost_price} onChange={(e) => handleCostChange(e.target.value)} className="input" required />
             </div>
 
             <div>
@@ -477,7 +510,7 @@ export function Products() {
                 <label className="label">Margen {marginUnit === 'bs' ? '(Bs)' : '(%)'}</label>
                 <button type="button" onClick={toggleMarginUnit} className="text-xs font-medium px-2 py-0.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition" title="Cambiar entre Bs y %">{marginUnit === 'bs' ? 'Ver %' : 'Ver Bs'}</button>
               </div>
-              <input type="text" readOnly tabIndex={-1} value={marginFieldValue} placeholder="Automático" className="input bg-neutral-100 dark:bg-neutral-800 cursor-default" />
+              <input type="number" step="0.01" min="0" value={form.margin} onChange={(e) => handleMarginChange(e.target.value)} className="input" placeholder={marginUnit === 'bs' ? 'Ganancia en Bs' : 'Ganancia en %'} />
               {marginUnit === 'bs' && costNum > 0 && saleNum > 0 && (
                 <p className={`text-xs mt-1 ${marginNum < 0 ? 'text-error-600 dark:text-error-400' : 'text-neutral-400'}`}>{marginPctNum.toFixed(1)}% de ganancia</p>
               )}
@@ -488,7 +521,7 @@ export function Products() {
 
             <div>
               <label className="label">Precio venta *</label>
-              <input type="number" step="0.01" min="0" value={form.sale_price} onChange={(e) => setForm({ ...form, sale_price: soloDecimales(e.target.value) })} className="input" required />
+              <input type="number" step="0.01" min="0" value={form.sale_price} onChange={(e) => handleSaleChange(e.target.value)} className="input" required />
             </div>
 
             <div>
