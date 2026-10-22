@@ -23,3 +23,10 @@ dist-ssr
 .env
 
 *.tsbuildinfo
+
+# Herramientas de desarrollo (no versionar)
+.bolt
+.claude
+.superpowers
+docs/superpowers
+CLAUDE.md
