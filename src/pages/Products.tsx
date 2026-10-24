@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Plus, Search, ScanLine, Edit2, Trash2, Package, AlertTriangle, Loader2, Filter, X, LayoutGrid, List, Percent, Layers } from 'lucide-react';
+import { Plus, Search, ScanLine, Edit2, Trash2, Package, AlertTriangle, Loader2, Filter, X, LayoutGrid, List, Percent, Layers, Truck } from 'lucide-react';
 import { supabase, Product, Supplier, formatCurrency, formatDate } from '@/lib/supabase';
 import { batchesApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -8,7 +8,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { Pager } from '@/components/ui/Pager';
 import { useToast } from '@/components/ui/Toast';
-import { soloEnteros, soloDecimales, titleCase } from '@/lib/validation';
+import { soloEnteros, soloDecimales, titleCase, soloLetras, normalizePhone, isValidPhone, PHONE_PREFIX } from '@/lib/validation';
 
 const emptyForm = {
   name: '', barcode: '', category: '', brand: '', description: '',
@@ -102,6 +102,93 @@ export function Products() {
   const [newCategory, setNewCategory] = useState('');
   const [showCatDropdown, setShowCatDropdown] = useState(false);
   const [page, setPage] = useState(1);
+
+  // ─── Creación rápida de proveedor ────────────────────────
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [supplierForm, setSupplierForm] = useState({ name: '', phone: '', contact_name: '' });
+  const [savingSupplier, setSavingSupplier] = useState(false);
+
+  const handleCreateSupplier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supplierForm.name.trim()) { show('El nombre del proveedor es obligatorio', 'error'); return; }
+    if (supplierForm.phone && !isValidPhone(supplierForm.phone)) { show('El teléfono debe tener 8 dígitos', 'error'); return; }
+    const duplicate = suppliers.find((s) => s.name.toLowerCase() === supplierForm.name.toLowerCase());
+    if (duplicate) { show('Ya existe un proveedor con ese nombre', 'error'); return; }
+    setSavingSupplier(true);
+    const payload = {
+      name: titleCase(supplierForm.name),
+      contact_name: supplierForm.contact_name ? titleCase(supplierForm.contact_name) : null,
+      nit: null, email: null,
+      phone: supplierForm.phone ? normalizePhone(supplierForm.phone) : null,
+      address: null, notes: null,
+    };
+    const { data, error } = await supabase.from('suppliers').insert(payload).select().single();
+    if (error) { show(error.message, 'error'); setSavingSupplier(false); return; }
+    const newSupplier = data as Supplier;
+    setSuppliers((prev) => [...prev, newSupplier].sort((a, b) => a.name.localeCompare(b.name)));
+    setForm((f) => ({ ...f, supplier_id: newSupplier.id }));
+    setSupplierForm({ name: '', phone: '', contact_name: '' });
+    setSupplierModalOpen(false);
+    setSavingSupplier(false);
+    show('Proveedor creado y seleccionado');
+  };
+
+  // ─── Creación rápida de categoría ────────────────────────
+  const [catModalOpen, setCatModalOpen] = useState(false);
+  const [catInput, setCatInput] = useState('');
+
+  const handleCreateCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cat = titleCase(catInput.trim());
+    if (!cat) { show('Escribe un nombre para la categoría', 'error'); return; }
+    setForm((f) => ({ ...f, category: cat }));
+    setNewCategory('');
+    setCatInput('');
+    setCatModalOpen(false);
+    show('Categoría creada y seleccionada');
+  };
+
+  // ─── Creación rápida de marca ─────────────────────────────
+  const [brandInput, setBrandInput] = useState('');
+  const [showBrandDropdown, setShowBrandDropdown] = useState(false);
+  const [brandModalOpen, setBrandModalOpen] = useState(false);
+  const [brandModalInput, setBrandModalInput] = useState('');
+
+  const allBrands = useMemo(() => {
+    return [...new Set(products.map((p) => p.brand).filter(Boolean) as string[])].sort();
+  }, [products]);
+
+  const handleCreateBrand = (e: React.FormEvent) => {
+    e.preventDefault();
+    const b = titleCase(brandModalInput.trim());
+    if (!b) { show('Escribe un nombre para la marca', 'error'); return; }
+    setForm((f) => ({ ...f, brand: b }));
+    setBrandInput('');
+    setBrandModalInput('');
+    setBrandModalOpen(false);
+    show('Marca creada y seleccionada');
+  };
+
+  // ─── Creación rápida de uso ───────────────────────────────
+  const [useModalOpen, setUseModalOpen] = useState(false);
+  const [customUses, setCustomUses] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('camila_custom_uses') || '[]'); } catch { return []; }
+  });
+  const [useInput, setUseInput] = useState('');
+  const allUses = useMemo(() => [...new Set([...USES, ...customUses])].sort(), [customUses]);
+
+  const handleCreateUse = (e: React.FormEvent) => {
+    e.preventDefault();
+    const u = titleCase(useInput.trim());
+    if (!u) { show('Escribe un nombre para el uso', 'error'); return; }
+    const updated = [...new Set([...customUses, u])];
+    setCustomUses(updated);
+    try { localStorage.setItem('camila_custom_uses', JSON.stringify(updated)); } catch { /* ignore */ }
+    setForm((f) => ({ ...f, use: u }));
+    setUseInput('');
+    setUseModalOpen(false);
+    show('Uso creado y seleccionado');
+  };
 
   useEffect(() => { loadProducts(); loadSuppliers(); }, []);
   useEffect(() => { setPage(1); }, [search, categoryFilter, brandFilter, useFilter, stockFilter, viewMode]);
@@ -441,7 +528,7 @@ export function Products() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <label className="label">Nombre *</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" required />
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" placeholder="Ej: Crema Hidratante Nivea 200ml" required />
             </div>
 
             <div>
@@ -473,17 +560,50 @@ export function Products() {
                     </div>
                   )}
                 </div>
+                <button type="button" onClick={() => { setCatInput(newCategory); setCatModalOpen(true); }} className="btn-secondary px-3 shrink-0" title="Crear nueva categoría">
+                  <Plus size={18} />
+                </button>
               </div>
             </div>
 
-            <div><label className="label">Marca</label><input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} className="input" /></div>
+            <div>
+              <label className="label">Marca</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    value={brandInput || form.brand}
+                    onChange={(e) => { setBrandInput(e.target.value); setForm({ ...form, brand: '' }); }}
+                    onFocus={() => setShowBrandDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowBrandDropdown(false), 200)}
+                    className="input"
+                    placeholder="Ej: Nivea, L'Oreal, Avon"
+                  />
+                  {showBrandDropdown && allBrands.length > 0 && (
+                    <div className="absolute z-10 top-full mt-1 w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg max-h-40 overflow-y-auto">
+                      {allBrands.filter((b) => !brandInput || b.toLowerCase().includes(brandInput.toLowerCase())).map((b) => (
+                        <button key={b} type="button" onMouseDown={() => { setForm({ ...form, brand: b }); setBrandInput(''); setShowBrandDropdown(false); }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200">{b}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button type="button" onClick={() => { setBrandModalInput(brandInput || form.brand); setBrandModalOpen(true); }} className="btn-secondary px-3 shrink-0" title="Crear nueva marca">
+                  <Plus size={18} />
+                </button>
+              </div>
+            </div>
 
             <div>
               <label className="label">Uso</label>
-              <select value={form.use} onChange={(e) => setForm({ ...form, use: e.target.value })} className="select">
-                <option value="">Sin especificar</option>
-                {USES.map((u) => <option key={u} value={u}>{u}</option>)}
-              </select>
+              <div className="flex gap-2">
+                <select value={form.use} onChange={(e) => setForm({ ...form, use: e.target.value })} className="select flex-1">
+                  <option value="">Sin especificar</option>
+                  {allUses.map((u) => <option key={u} value={u}>{u}</option>)}
+                </select>
+                <button type="button" onClick={() => setUseModalOpen(true)} className="btn-secondary px-3 shrink-0" title="Crear nuevo uso">
+                  <Plus size={18} />
+                </button>
+              </div>
             </div>
 
             <div>
@@ -494,15 +614,20 @@ export function Products() {
 
             <div>
               <label className="label">Proveedor</label>
-              <select value={form.supplier_id} onChange={(e) => setForm({ ...form, supplier_id: e.target.value })} className="select">
-                <option value="">Sin proveedor</option>
-                {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              <div className="flex gap-2">
+                <select value={form.supplier_id} onChange={(e) => setForm({ ...form, supplier_id: e.target.value })} className="select flex-1">
+                  <option value="">Sin proveedor</option>
+                  {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <button type="button" onClick={() => setSupplierModalOpen(true)} className="btn-secondary px-3 shrink-0" title="Crear proveedor nuevo">
+                  <Plus size={18} />
+                </button>
+              </div>
             </div>
 
             <div>
               <label className="label">Precio costo *</label>
-              <input type="number" step="0.01" min="0" value={form.cost_price} onChange={(e) => handleCostChange(e.target.value)} className="input" required />
+              <input type="number" step="0.01" min="0" value={form.cost_price} onChange={(e) => handleCostChange(e.target.value)} className="input" placeholder="0.00" required />
             </div>
 
             <div>
@@ -510,7 +635,7 @@ export function Products() {
                 <label className="label">Margen {marginUnit === 'bs' ? '(Bs)' : '(%)'}</label>
                 <button type="button" onClick={toggleMarginUnit} className="text-xs font-medium px-2 py-0.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition" title="Cambiar entre Bs y %">{marginUnit === 'bs' ? 'Ver %' : 'Ver Bs'}</button>
               </div>
-              <input type="number" step="0.01" min="0" value={form.margin} onChange={(e) => handleMarginChange(e.target.value)} className="input" placeholder={marginUnit === 'bs' ? 'Ganancia en Bs' : 'Ganancia en %'} />
+              <input type="number" step="0.01" min="0" value={form.margin} onChange={(e) => handleMarginChange(e.target.value)} className="input" placeholder={marginUnit === 'bs' ? 'Ej: 15.00 Bs de ganancia' : 'Ej: 30%'} />
               {marginUnit === 'bs' && costNum > 0 && saleNum > 0 && (
                 <p className={`text-xs mt-1 ${marginNum < 0 ? 'text-error-600 dark:text-error-400' : 'text-neutral-400'}`}>{marginPctNum.toFixed(1)}% de ganancia</p>
               )}
@@ -521,18 +646,18 @@ export function Products() {
 
             <div>
               <label className="label">Precio venta *</label>
-              <input type="number" step="0.01" min="0" value={form.sale_price} onChange={(e) => handleSaleChange(e.target.value)} className="input" required />
+              <input type="number" step="0.01" min="0" value={form.sale_price} onChange={(e) => handleSaleChange(e.target.value)} className="input" placeholder="0.00" required />
             </div>
 
             <div>
               <label className="label">Stock {editing ? '(suma de lotes)' : '*'}</label>
-              <input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: soloEnteros(e.target.value) })} className={`input ${editing ? 'bg-neutral-100 dark:bg-neutral-800 cursor-default' : ''}`} readOnly={!!editing} required={!editing} />
+              <input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: soloEnteros(e.target.value) })} className={`input ${editing ? 'bg-neutral-100 dark:bg-neutral-800 cursor-default' : ''}`} readOnly={!!editing} placeholder="0" required={!editing} />
               {editing && <p className="text-xs text-neutral-400 mt-1">Se gestiona por lotes (abajo).</p>}
             </div>
 
             <div>
               <label className="label">Stock mínimo</label>
-              <input type="number" min="0" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: soloEnteros(e.target.value) })} className="input" />
+              <input type="number" min="0" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: soloEnteros(e.target.value) })} className="input" placeholder="Ej: 5" />
               {parseInt(form.min_stock) > 0 && parseInt(form.stock) <= parseInt(form.min_stock) && (
                 <p className="text-xs text-error-600 dark:text-error-400 mt-1">⚠ Stock en o bajo el mínimo</p>
               )}
@@ -598,6 +723,149 @@ export function Products() {
 
       <BarcodeScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onDetected={handleScan} />
       <ConfirmDialog open={!!deleteId} title="Eliminar producto" message="¿Seguro que deseas eliminar este producto? Esta acción no se puede deshacer." onConfirm={handleDelete} onCancel={() => setDeleteId(null)} loading={deleting} />
+
+      {/* ── Modal: nueva categoría rápida ── */}
+      <Modal
+        open={catModalOpen}
+        onClose={() => setCatModalOpen(false)}
+        title="Nueva categoría"
+        size="sm"
+        footer={
+          <>
+            <button type="button" onClick={() => setCatModalOpen(false)} className="btn-secondary">Cancelar</button>
+            <button type="submit" form="quick-cat-form" className="btn-primary">Crear y seleccionar</button>
+          </>
+        }
+      >
+        <form id="quick-cat-form" onSubmit={handleCreateCategory} className="space-y-4">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">Se creará la categoría y quedará seleccionada para este producto.</p>
+          <div>
+            <label className="label">Nombre de la categoría *</label>
+            <input
+              value={catInput}
+              onChange={(e) => setCatInput(e.target.value)}
+              className="input"
+              placeholder="Ej: Perfumería, Skincare, Maquillaje"
+              autoFocus
+              required
+            />
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Modal: nueva marca rápida ── */}
+      <Modal
+        open={brandModalOpen}
+        onClose={() => setBrandModalOpen(false)}
+        title="Nueva marca"
+        size="sm"
+        footer={
+          <>
+            <button type="button" onClick={() => setBrandModalOpen(false)} className="btn-secondary">Cancelar</button>
+            <button type="submit" form="quick-brand-form" className="btn-primary">Crear y seleccionar</button>
+          </>
+        }
+      >
+        <form id="quick-brand-form" onSubmit={handleCreateBrand} className="space-y-4">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">Se creará la marca y quedará seleccionada para este producto.</p>
+          <div>
+            <label className="label">Nombre de la marca *</label>
+            <input
+              value={brandModalInput}
+              onChange={(e) => setBrandModalInput(e.target.value)}
+              className="input"
+              placeholder="Ej: Nivea, L'Oreal, Yanbal"
+              autoFocus
+              required
+            />
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Modal: nuevo uso rápido ── */}
+      <Modal
+        open={useModalOpen}
+        onClose={() => setUseModalOpen(false)}
+        title="Nuevo uso"
+        size="sm"
+        footer={
+          <>
+            <button type="button" onClick={() => setUseModalOpen(false)} className="btn-secondary">Cancelar</button>
+            <button type="submit" form="quick-use-form" className="btn-primary">Crear y seleccionar</button>
+          </>
+        }
+      >
+        <form id="quick-use-form" onSubmit={handleCreateUse} className="space-y-4">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">Se creará el tipo de uso y quedará seleccionado para este producto. Se guardará en este dispositivo.</p>
+          <div>
+            <label className="label">Tipo de uso *</label>
+            <input
+              value={useInput}
+              onChange={(e) => setUseInput(e.target.value)}
+              className="input"
+              placeholder="Ej: Íntimo, Bebé, Dental"
+              autoFocus
+              required
+            />
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Modal: nuevo proveedor rápido ── */}
+      <Modal
+        open={supplierModalOpen}
+        onClose={() => setSupplierModalOpen(false)}
+        title="Nuevo proveedor"
+        size="sm"
+        footer={
+          <>
+            <button type="button" onClick={() => setSupplierModalOpen(false)} className="btn-secondary">Cancelar</button>
+            <button type="submit" form="quick-supplier-form" className="btn-primary" disabled={savingSupplier}>
+              {savingSupplier && <Loader2 size={16} className="animate-spin" />}Crear proveedor
+            </button>
+          </>
+        }
+      >
+        <form id="quick-supplier-form" onSubmit={handleCreateSupplier} className="space-y-4">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">Se creará el proveedor y quedará seleccionado para este producto.</p>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-secondary-400 to-primary-400 flex items-center justify-center text-white shrink-0">
+              <Truck size={18} />
+            </div>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Solo el nombre es obligatorio para creación rápida.</p>
+          </div>
+          <div>
+            <label className="label">Nombre / Empresa *</label>
+            <input
+              value={supplierForm.name}
+              onChange={(e) => setSupplierForm({ ...supplierForm, name: soloLetras(e.target.value) })}
+              className="input"
+              placeholder="Ej: Distribuidora ABC"
+              required
+            />
+          </div>
+          <div>
+            <label className="label">Persona de contacto (opcional)</label>
+            <input
+              value={supplierForm.contact_name}
+              onChange={(e) => setSupplierForm({ ...supplierForm, contact_name: soloLetras(e.target.value) })}
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="label">Teléfono (opcional)</label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 text-sm pointer-events-none">{PHONE_PREFIX}</span>
+              <input
+                value={supplierForm.phone}
+                onChange={(e) => setSupplierForm({ ...supplierForm, phone: normalizePhone(e.target.value) })}
+                className="input pl-14"
+                placeholder="70000000"
+              />
+            </div>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

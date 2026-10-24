@@ -189,6 +189,8 @@ export interface CashSession {
     discount: number;
     byMethod: Record<string, number>;
     discountsBySeller: { sellerId: string | null; sellerName: string; count: number; total: number; discount: number }[];
+    grossProfit: number | null;
+    marginPercent: number | null;
   };
   expectedCash?: number;
   difference?: number | null;

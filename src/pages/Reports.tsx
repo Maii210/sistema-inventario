@@ -570,8 +570,8 @@ export function Reports() {
             <div className="px-6 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Historial de cajas ({closedCashSessions.length})</h2>
               <div className="flex gap-2">
-                <button onClick={() => exportCSV(['Apertura', 'Cierre', 'Inicial', 'Ventas efectivo', 'Ventas QR', 'Descuentos', 'Efectivo esperado', 'Efectivo contado', 'Diferencia', 'Cerró'], closedCashSessions.map((c) => [formatDateTime(c.openedAt), c.closedAt ? formatDateTime(c.closedAt) : '', c.openingAmount, c.totals?.byMethod?.['efectivo'] ?? 0, c.totals?.byMethod?.['qr'] ?? 0, c.totals?.discount ?? 0, c.expectedCash ?? 0, c.countedAmount ?? '', c.difference ?? '', c.closedByName ?? '']), 'cajas')} className="btn-secondary text-xs"><FileDown size={14} /> CSV</button>
-                <button onClick={() => exportPDF('Reporte de Cajas', ['Apertura', 'Cierre', 'Inicial', 'Vta. efvo.', 'Vta. QR', 'Desc.', 'Efvo. esperado', 'Efvo. contado', 'Dif.', 'Cerró'], closedCashSessions.map((c) => [formatDateTime(c.openedAt), c.closedAt ? formatDateTime(c.closedAt) : '', formatCurrency(c.openingAmount), formatCurrency(c.totals?.byMethod?.['efectivo'] ?? 0), formatCurrency(c.totals?.byMethod?.['qr'] ?? 0), formatCurrency(c.totals?.discount ?? 0), formatCurrency(c.expectedCash ?? 0), c.countedAmount != null ? formatCurrency(c.countedAmount) : '', c.difference != null ? formatCurrency(c.difference) : '', c.closedByName ?? '']))} className="btn-secondary text-xs"><FileDown size={14} /> PDF</button>
+                <button onClick={() => exportCSV(['Apertura', 'Cierre', 'Inicial', 'Ventas efectivo', 'Ventas QR', 'Descuentos', 'Utilidad bruta', 'Margen bruto', 'Efectivo esperado', 'Efectivo contado', 'Diferencia', 'Cerró'], closedCashSessions.map((c) => [formatDateTime(c.openedAt), c.closedAt ? formatDateTime(c.closedAt) : '', c.openingAmount, c.totals?.byMethod?.['efectivo'] ?? 0, c.totals?.byMethod?.['qr'] ?? 0, c.totals?.discount ?? 0, c.totals?.grossProfit == null ? 'Costo pendiente' : c.totals.grossProfit, c.totals?.marginPercent == null ? 'Costo pendiente' : `${c.totals.marginPercent.toFixed(1)}%`, c.expectedCash ?? 0, c.countedAmount ?? '', c.difference ?? '', c.closedByName ?? '']), 'cajas')} className="btn-secondary text-xs"><FileDown size={14} /> CSV</button>
+                <button onClick={() => exportPDF('Reporte de Cajas', ['Apertura', 'Cierre', 'Inicial', 'Vta. efvo.', 'Vta. QR', 'Desc.', 'Utilidad', 'Margen', 'Efvo. esperado', 'Efvo. contado', 'Dif.', 'Cerró'], closedCashSessions.map((c) => [formatDateTime(c.openedAt), c.closedAt ? formatDateTime(c.closedAt) : '', formatCurrency(c.openingAmount), formatCurrency(c.totals?.byMethod?.['efectivo'] ?? 0), formatCurrency(c.totals?.byMethod?.['qr'] ?? 0), formatCurrency(c.totals?.discount ?? 0), c.totals?.grossProfit == null ? 'Costo pendiente' : formatCurrency(c.totals.grossProfit), c.totals?.marginPercent == null ? 'Costo pendiente' : `${c.totals.marginPercent.toFixed(1)}%`, formatCurrency(c.expectedCash ?? 0), c.countedAmount != null ? formatCurrency(c.countedAmount) : '', c.difference != null ? formatCurrency(c.difference) : '', c.closedByName ?? '']))} className="btn-secondary text-xs"><FileDown size={14} /> PDF</button>
               </div>
             </div>
             {closedCashSessions.length === 0 ? (
@@ -580,32 +580,26 @@ export function Reports() {
               <div className="overflow-x-auto">
                 <table className="w-full whitespace-nowrap">
                   <thead><tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30">
-                    <th className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Apertura</th>
-                    <th className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Cierre</th>
-                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Inicial</th>
-                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Ventas efectivo</th>
-                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Ventas QR</th>
-                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Descuentos</th>
+                    <th className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Período</th>
+                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Ventas</th>
+                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Utilidad</th>
+                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Margen</th>
                     <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Efectivo esperado</th>
                     <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Efectivo contado</th>
                     <th className="text-right text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Diferencia</th>
-                    <th className="text-left text-xs font-semibold text-neutral-500 uppercase px-5 py-3">Cerró</th>
                   </tr></thead>
                   <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
                     {closedCashSessions.map((c) => {
                       const dif = c.difference ?? 0;
                       return (
                         <tr key={c.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
-                          <td className="px-5 py-3 text-sm text-neutral-600 dark:text-neutral-300">{formatDateTime(c.openedAt)}</td>
-                          <td className="px-5 py-3 text-sm text-neutral-600 dark:text-neutral-300">{c.closedAt ? formatDateTime(c.closedAt) : '—'}</td>
-                          <td className="px-5 py-3 text-sm text-right text-neutral-500">{formatCurrency(c.openingAmount)}</td>
-                          <td className="px-5 py-3 text-sm text-right text-neutral-500">{formatCurrency(c.totals?.byMethod?.['efectivo'] ?? 0)}</td>
-                          <td className="px-5 py-3 text-sm text-right text-neutral-500">{formatCurrency(c.totals?.byMethod?.['qr'] ?? 0)}</td>
-                          <td className="px-5 py-3 text-sm text-right text-success-600">{formatCurrency(c.totals?.discount ?? 0)}</td>
+                          <td className="px-5 py-3 text-sm text-neutral-600 dark:text-neutral-300"><div>{formatDateTime(c.openedAt)}</div><div className="text-xs text-neutral-400">{c.closedAt ? `hasta ${formatDateTime(c.closedAt)}` : 'Abierta'}</div></td>
+                          <td className="px-5 py-3 text-sm text-right font-medium text-neutral-700 dark:text-neutral-200">{formatCurrency(c.totals?.total ?? 0)}</td>
+                          <td className={`px-5 py-3 text-sm text-right font-medium ${c.totals?.grossProfit != null && c.totals.grossProfit < 0 ? 'text-error-600' : 'text-success-600'}`}>{c.totals?.grossProfit == null ? 'Costo pendiente' : formatCurrency(c.totals.grossProfit)}</td>
+                          <td className="px-5 py-3 text-sm text-right text-neutral-500">{c.totals?.marginPercent == null ? '—' : `${c.totals.marginPercent.toFixed(1)}%`}</td>
                           <td className="px-5 py-3 text-sm text-right font-medium text-primary-600 dark:text-primary-400">{formatCurrency(c.expectedCash ?? 0)}</td>
                           <td className="px-5 py-3 text-sm text-right text-neutral-700 dark:text-neutral-200">{c.countedAmount != null ? formatCurrency(c.countedAmount) : '—'}</td>
                           <td className={`px-5 py-3 text-sm text-right font-medium ${Math.abs(dif) < 0.01 ? 'text-success-600' : dif > 0 ? 'text-warning-600' : 'text-error-600'}`}>{c.countedAmount != null ? formatCurrency(dif) : '—'}</td>
-                          <td className="px-5 py-3 text-sm text-neutral-500">{c.closedByName || '—'}</td>
                         </tr>
                       );
                     })}

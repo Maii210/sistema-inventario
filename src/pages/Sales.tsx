@@ -26,7 +26,7 @@ interface PersistedSale {
   selectedClient: string;
   selectedSeller: string;
   paymentMethod: PaymentMethod;
-  globalDiscount: number;
+  globalDiscount: number | string;
   notes: string;
 }
 
@@ -59,7 +59,10 @@ export function Sales() {
   const [selectedClient, setSelectedClient] = useState(() => readPersistedSale(cartKey).selectedClient ?? '');
   const [selectedSeller, setSelectedSeller] = useState(() => readPersistedSale(cartKey).selectedSeller ?? '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() => readPersistedSale(cartKey).paymentMethod ?? 'Efectivo');
-  const [globalDiscount, setGlobalDiscount] = useState(() => readPersistedSale(cartKey).globalDiscount ?? 0);
+  const [globalDiscount, setGlobalDiscount] = useState(() => {
+    const v = readPersistedSale(cartKey).globalDiscount;
+    return v != null ? String(v) : '';
+  });
   const [notes, setNotes] = useState(() => readPersistedSale(cartKey).notes ?? '');
   const [qrImage, setQrImage] = useState('');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>(() => {
@@ -92,7 +95,7 @@ export function Sales() {
   // Mantiene la venta en curso (carrito, cliente, vendedora, etc.) al cambiar de módulo o recargar.
   useEffect(() => {
     try {
-      localStorage.setItem(cartKey, JSON.stringify({ cart, selectedClient, selectedSeller, paymentMethod, globalDiscount, notes }));
+      localStorage.setItem(cartKey, JSON.stringify({ cart, selectedClient, selectedSeller, paymentMethod, globalDiscount: parseFloat(globalDiscount) || 0, notes }));
     } catch { /* ignore */ }
   }, [cartKey, cart, selectedClient, selectedSeller, paymentMethod, globalDiscount, notes]);
 
@@ -195,7 +198,7 @@ export function Sales() {
 
   const subtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const itemDiscounts = cart.reduce((sum, item) => sum + item.discountAmt, 0);
-  const globalDiscountAmt = globalDiscount;
+  const globalDiscountAmt = parseFloat(globalDiscount) || 0;
   const totalDiscount = itemDiscounts + globalDiscountAmt;
   const total = Math.max(subtotal - totalDiscount, 0);
   const totalUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -252,7 +255,7 @@ export function Sales() {
         return sold ? { ...p, stock: Math.max(p.stock - sold.quantity, 0) } : p;
       }));
     }
-    setCart([]); setSelectedClient(''); setGlobalDiscount(0); setNotes(''); setQrImage('');
+    setCart([]); setSelectedClient(''); setGlobalDiscount(''); setNotes(''); setQrImage('');
     loadData(true);
     show('Venta completada');
     setCompleting(false);
@@ -424,11 +427,17 @@ export function Sales() {
                           <p className="text-[10px] text-success-600 dark:text-success-400">Ganancia: {formatCurrency((item.unitPrice - (item.externalCost ?? 0)) * item.quantity)}</p>
                         )}
                         <div className="flex items-center gap-2 mt-1">
-                          <input type="number" value={item.unitPrice} onChange={(e) => updatePrice(item.product.id, parseFloat(e.target.value) || 0)}
-                            className="w-20 px-2 py-1 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-400" step="0.01" />
+                          <input type="number"
+                            value={item.unitPrice === 0 ? '' : item.unitPrice}
+                            onChange={(e) => updatePrice(item.product.id, parseFloat(e.target.value) || 0)}
+                            className="w-20 px-2 py-1 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-400"
+                            step="0.01" placeholder="0.00" />
                           <span className="text-xs text-neutral-400">c/u</span>
-                          <input type="number" value={item.discountAmt} onChange={(e) => updateItemDiscount(item.product.id, parseFloat(e.target.value) || 0)}
-                            className="w-16 px-1 py-1 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-400" min="0" placeholder="0" />
+                          <input type="number"
+                            value={item.discountAmt === 0 ? '' : item.discountAmt}
+                            onChange={(e) => updateItemDiscount(item.product.id, parseFloat(e.target.value) || 0)}
+                            className="w-16 px-1 py-1 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-400"
+                            min="0" placeholder="Dto Bs" />
                           <span className="text-[10px] text-neutral-400">dto Bs</span>
                         </div>
                       </div>
@@ -486,7 +495,14 @@ export function Sales() {
                     </div>
                     <div>
                       <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">Descuento global (Bs)</label>
-                      <input type="number" min="0" value={globalDiscount} onChange={(e) => setGlobalDiscount(Math.max(parseFloat(e.target.value) || 0, 0))} className="input py-2 text-sm" />
+                      <input
+                        type="number" min="0"
+                        value={globalDiscount}
+                        onChange={(e) => setGlobalDiscount(e.target.value)}
+                        onBlur={(e) => { if (e.target.value === '' || parseFloat(e.target.value) < 0) setGlobalDiscount(''); }}
+                        className="input py-2 text-sm"
+                        placeholder="0.00"
+                      />
                     </div>
                   </div>
 

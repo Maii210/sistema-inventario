@@ -42,6 +42,8 @@ export function Dashboard() {
     totalProducts: 0,
     totalClients: 0,
     lowStockCount: 0,
+    periodProfit: null as number | null,
+    periodMargin: null as number | null,
   });
   const [categoryData, setCategoryData] = useState<{ name: string; value: number; count: number }[]>([]);
   const [barData, setBarData] = useState<{ name: string; ventas: number }[]>([]);
@@ -98,6 +100,18 @@ export function Dashboard() {
         .sort((a: any, b: any) => new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime())
     );
 
+    let periodCost = 0;
+    let costsComplete = true;
+    for (const sale of periodData) {
+      for (const item of sale.sale_items ?? []) {
+        const unitCost = item.unit_cost ?? item.external_cost ?? null;
+        if (unitCost == null) costsComplete = false;
+        else periodCost += Number(unitCost) * Number(item.quantity);
+      }
+    }
+    const periodRevenue = periodData.reduce((sum: number, s: any) => sum + Number(s.total), 0);
+    const periodProfit = costsComplete ? periodRevenue - periodCost : null;
+
     setStats({
       todayTotal: todaySalesData.reduce((sum: number, s: any) => sum + Number(s.total), 0),
       todayCount: todaySalesData.length,
@@ -105,6 +119,8 @@ export function Dashboard() {
       totalProducts: productsData.length,
       totalClients: (clientsRes.data ?? []).length,
       lowStockCount: productsData.filter((p: any) => p.stock <= p.min_stock).length,
+      periodProfit,
+      periodMargin: periodProfit == null || periodRevenue === 0 ? null : (periodProfit / periodRevenue) * 100,
     });
 
     const pie = CATEGORIES.map((category) => {
@@ -159,17 +175,24 @@ export function Dashboard() {
       sub: 'Acumulado del rango seleccionado',
     },
     {
+      label: `Utilidad · ${periodLabels[period]}`,
+      value: stats.periodProfit == null ? '—' : formatCurrency(stats.periodProfit),
+      icon: <TrendingUp size={22} />,
+      color: 'from-accent-500 to-accent-600',
+      sub: stats.periodMargin == null ? 'Falta costo en algún producto' : `Margen ${stats.periodMargin.toFixed(1)}%`,
+    },
+    {
       label: 'Productos activos',
       value: stats.totalProducts.toString(),
       icon: <Package size={22} />,
-      color: 'from-accent-500 to-accent-600',
+      color: 'from-secondary-500 to-secondary-600',
       sub: `${stats.lowStockCount} con stock bajo`,
     },
     {
       label: 'Clientes registrados',
       value: stats.totalClients.toString(),
       icon: <Users size={22} />,
-      color: 'from-secondary-500 to-secondary-600',
+      color: 'from-primary-500 to-primary-600',
       sub: 'Total de clientes',
     },
   ], [stats, period]);

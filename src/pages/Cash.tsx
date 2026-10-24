@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Loader2, LockOpen, Lock, Wallet } from 'lucide-react';
+import { Loader2, LockOpen, Lock, Wallet, TrendingUp } from 'lucide-react';
 import { cashApi, CashSession } from '@/lib/api';
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/supabase';
 
 const METHOD_LABELS: Record<string, string> = { efectivo: 'Efectivo (caja)', qr: 'QR' };
 const METHOD_ORDER = ['efectivo', 'qr'];
@@ -145,6 +145,28 @@ export function Cash() {
                   </div>
                 ))}
               </div>
+
+              {/* Utilidad de la sesión, calculada con el costo guardado al vender. */}
+              {session.totals?.grossProfit !== undefined && (
+                <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <TrendingUp size={16} className="text-success-500" />
+                      <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">Utilidad bruta del turno</span>
+                    </div>
+                    <span className={`text-lg font-bold ${session.totals.grossProfit != null && session.totals.grossProfit < 0 ? 'text-error-600 dark:text-error-400' : 'text-success-600 dark:text-success-400'}`}>
+                      {session.totals.grossProfit == null ? 'No disponible' : formatCurrency(session.totals.grossProfit)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    {session.totals.grossProfit == null
+                      ? 'Falta registrar el costo de uno o más productos de este turno.'
+                      : session.totals.marginPercent == null
+                        ? 'No hubo ventas en este turno para calcular el margen.'
+                        : `Margen bruto: ${session.totals.marginPercent.toFixed(1)}% de las ventas netas.`}
+                  </p>
+                </div>
+              )}
 
               {/* Efectivo esperado = inicial + efectivo cobrado */}
               <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 flex justify-between items-end">

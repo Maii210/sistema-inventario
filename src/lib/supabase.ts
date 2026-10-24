@@ -95,6 +95,7 @@ export interface SaleItem {
   subtotal: number;
   is_external?: boolean;
   external_cost?: number | null;
+  unit_cost?: number | null;
   created_at: string;
 }
 
@@ -208,7 +209,7 @@ function mapSale(s: any): Sale {
     status: 'completada', notes: null, created_at: s.createdAt,
     client: s.customer ? mapClient(s.customer) : undefined,
     seller: s.user ? mapUser(s.user) : undefined,
-    sale_items: s.items?.map((i: any) => ({ id: i.id, sale_id: i.saleId, product_id: i.productId || '', product_name: i.name, quantity: i.quantity, unit_price: i.price, subtotal: i.price * i.quantity - (i.discount || 0), is_external: i.isExternal ?? false, external_cost: i.externalCost ?? null, created_at: '' })) || [],
+    sale_items: s.items?.map((i: any) => ({ id: i.id, sale_id: i.saleId, product_id: i.productId || '', product_name: i.name, quantity: i.quantity, unit_price: i.price, subtotal: i.price * i.quantity - (i.discount || 0), is_external: i.isExternal ?? false, external_cost: i.externalCost ?? null, unit_cost: i.unitCost ?? i.product?.purchasePrice ?? null, created_at: '' })) || [],
   };
 }
 function mapSaleReverse(s: any) {
