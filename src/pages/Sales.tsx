@@ -5,6 +5,7 @@ import { soloLetras, titleCase, normalizePhone, isValidPhone, PHONE_PREFIX } fro
 import { settingsApi, cashApi, CashSession } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { Modal } from '@/components/ui/Modal';
 import { Pager } from '@/components/ui/Pager';
 import { useToast } from '@/components/ui/Toast';
@@ -204,10 +205,15 @@ export function Sales() {
   const totalUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleScan = (code: string) => {
-    const product = products.find((p) => p.barcode === code);
+    // Coincide con el código principal del producto o con el de cualquiera de sus lotes.
+    const product = products.find((p) => p.barcode === code || p.batches?.some((b) => b.barcode === code));
     if (product) { addToCart(product); show(`Añadido: ${product.name}`); } else { show(`No encontrado: ${code}`, 'error'); }
     setScannerOpen(false);
   };
+
+  // Lector físico (USB): escanear agrega el producto al carrito sin abrir el modal.
+  // Se desactiva mientras se muestra el recibo para no afectar la venta recién cerrada.
+  useBarcodeScanner(handleScan, { enabled: !receiptOpen });
 
 
   const completeSale = async () => {
@@ -318,7 +324,9 @@ export function Sales() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">Punto de Venta</h1>
-          <p className="text-neutral-400 dark:text-neutral-500 text-sm mt-1">Escanea o busca productos para iniciar una venta</p>
+          <p className="text-neutral-400 dark:text-neutral-500 text-sm mt-1 flex items-center gap-1.5">
+            <ScanLine size={14} className="text-primary-500" /> Lector activo — escanea un producto para agregarlo, o búscalo manualmente
+          </p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setExtModalOpen(true)} className="btn-secondary"><PackagePlus size={18} /> Prestado</button>
@@ -340,7 +348,7 @@ export function Sales() {
             <div className="flex gap-3">
               <div className="relative flex-1">
                 <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-                <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar producto por nombre, marca o código..." className="input pl-11" autoFocus />
+                <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar producto por nombre, marca o código..." className="input pl-11" />
               </div>
               <div className="flex rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden shrink-0">
                 <button type="button" onClick={() => setViewMode('cards')} title="Tarjetas" className={`px-3 ${viewMode === 'cards' ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300' : 'text-neutral-400 hover:text-neutral-600'}`}><LayoutGrid size={18} /></button>

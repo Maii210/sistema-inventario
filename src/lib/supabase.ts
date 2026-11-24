@@ -78,6 +78,7 @@ export interface Product {
 export interface ProductBatch {
   id: string;
   quantity: number;
+  barcode: string | null;
   expiry_date: string | null;
   created_at: string;
 }
@@ -134,6 +135,23 @@ export function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('es-BO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+// Convierte una fecha 'YYYY-MM-DD' a ISO fijándola al mediodía local, para que
+// la zona horaria (Bolivia UTC-4) no corra el día al mostrarla.
+export function toExpiryISO(dateStr: string): string {
+  return new Date(`${dateStr}T12:00:00`).toISOString();
+}
+
+// Muestra la caducidad. Si el día es el último del mes lo tratamos como
+// "solo mes y año" (ej: productos que solo traen MM/AAAA) y omitimos el día.
+export function formatExpiry(value: string): string {
+  const d = new Date(value);
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  const opts: Intl.DateTimeFormatOptions = d.getDate() === lastDay
+    ? { month: 'short', year: 'numeric' }
+    : { day: '2-digit', month: 'short', year: 'numeric' };
+  return d.toLocaleDateString('es-BO', opts);
+}
+
 // ─── Field mapping helpers ─────────────────────────────────
 const ROLE_MAP: Record<string, Role> = { admin: 'admin', vendedor: 'vendedor', inventarista: 'vendedor', superadmin: 'superadmin' };
 const ROLE_MAP_REVERSE: Record<Role, string> = { vendedor: 'vendedor', admin: 'admin', superadmin: 'superadmin' };
@@ -183,7 +201,7 @@ function mapSupplierReverse(s: Partial<Supplier>) {
   return r;
 }
 function mapProduct(p: any): Product {
-  return { id: p.id, name: p.name, barcode: p.barcode || null, category: p.category || '', brand: p.brand || null, description: p.description || null, cost_price: p.purchasePrice ?? 0, sale_price: p.price ?? 0, stock: p.stock ?? 0, min_stock: p.minStock ?? 0, supplier_id: p.supplierId || null, use: p.use || null, expiry_date: p.expiryDate || null, active: true, created_at: p.createdAt, updated_at: p.updatedAt, supplier: p.supplier ? mapSupplier(p.supplier) : undefined, batches: Array.isArray(p.batches) ? p.batches.map((b: any) => ({ id: b.id, quantity: b.quantity, expiry_date: b.expiryDate || null, created_at: b.createdAt })) : undefined };
+  return { id: p.id, name: p.name, barcode: p.barcode || null, category: p.category || '', brand: p.brand || null, description: p.description || null, cost_price: p.purchasePrice ?? 0, sale_price: p.price ?? 0, stock: p.stock ?? 0, min_stock: p.minStock ?? 0, supplier_id: p.supplierId || null, use: p.use || null, expiry_date: p.expiryDate || null, active: true, created_at: p.createdAt, updated_at: p.updatedAt, supplier: p.supplier ? mapSupplier(p.supplier) : undefined, batches: Array.isArray(p.batches) ? p.batches.map((b: any) => ({ id: b.id, quantity: b.quantity, barcode: b.barcode || null, expiry_date: b.expiryDate || null, created_at: b.createdAt })) : undefined };
 }
 function mapProductReverse(p: Partial<Product>) {
   const r: any = {};

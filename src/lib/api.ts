@@ -110,7 +110,7 @@ export const productsApi = {
 
 // ─── Lotes (ProductBatch) ──────────────────────────────────
 export const batchesApi = {
-  add: (productId: string, data: { quantity: number; expiryDate?: string | null }) =>
+  add: (productId: string, data: { quantity: number; barcode?: string | null; expiryDate?: string | null }) =>
     request<ApiProduct>(`/products/${productId}/batches`, { method: 'POST', body: JSON.stringify(data) }),
   remove: (productId: string, batchId: string) =>
     request<ApiProduct>(`/products/${productId}/batches/${batchId}`, { method: 'DELETE' }),

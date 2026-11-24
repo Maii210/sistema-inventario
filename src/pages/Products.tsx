@@ -1,11 +1,14 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Plus, Search, ScanLine, Edit2, Trash2, Package, AlertTriangle, Loader2, Filter, X, LayoutGrid, List, Percent, Layers, Truck } from 'lucide-react';
-import { supabase, Product, Supplier, formatCurrency, formatDate } from '@/lib/supabase';
+import { supabase, Product, Supplier, formatCurrency, formatExpiry, toExpiryISO } from '@/lib/supabase';
 import { batchesApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
+import { ScanCounter } from '@/components/ScanCounter';
+import { ExpiryInput } from '@/components/ExpiryInput';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { Pager } from '@/components/ui/Pager';
 import { useToast } from '@/components/ui/Toast';
 import { soloEnteros, soloDecimales, titleCase, soloLetras, normalizePhone, isValidPhone, PHONE_PREFIX } from '@/lib/validation';
@@ -96,7 +99,7 @@ export function Products() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [scannerTarget, setScannerTarget] = useState<'filter' | 'form'>('filter');
+  const [scannerTarget, setScannerTarget] = useState<'filter' | 'form' | 'batch'>('filter');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [newCategory, setNewCategory] = useState('');
@@ -136,11 +139,17 @@ export function Products() {
   // ─── Creación rápida de categoría ────────────────────────
   const [catModalOpen, setCatModalOpen] = useState(false);
   const [catInput, setCatInput] = useState('');
+  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('camila_custom_categories') || '[]'); } catch { return []; }
+  });
 
   const handleCreateCategory = (e: React.FormEvent) => {
     e.preventDefault();
     const cat = titleCase(catInput.trim());
     if (!cat) { show('Escribe un nombre para la categoría', 'error'); return; }
+    const updated = [...new Set([...customCategories, cat])];
+    setCustomCategories(updated);
+    try { localStorage.setItem('camila_custom_categories', JSON.stringify(updated)); } catch { /* ignore */ }
     setForm((f) => ({ ...f, category: cat }));
     setNewCategory('');
     setCatInput('');
@@ -153,15 +162,24 @@ export function Products() {
   const [showBrandDropdown, setShowBrandDropdown] = useState(false);
   const [brandModalOpen, setBrandModalOpen] = useState(false);
   const [brandModalInput, setBrandModalInput] = useState('');
+  const [customBrands, setCustomBrands] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('camila_custom_brands') || '[]'); } catch { return []; }
+  });
 
   const allBrands = useMemo(() => {
-    return [...new Set(products.map((p) => p.brand).filter(Boolean) as string[])].sort();
-  }, [products]);
+    return [...new Set([
+      ...products.map((p) => p.brand).filter(Boolean) as string[],
+      ...customBrands,
+    ])].sort();
+  }, [products, customBrands]);
 
   const handleCreateBrand = (e: React.FormEvent) => {
     e.preventDefault();
     const b = titleCase(brandModalInput.trim());
     if (!b) { show('Escribe un nombre para la marca', 'error'); return; }
+    const updated = [...new Set([...customBrands, b])];
+    setCustomBrands(updated);
+    try { localStorage.setItem('camila_custom_brands', JSON.stringify(updated)); } catch { /* ignore */ }
     setForm((f) => ({ ...f, brand: b }));
     setBrandInput('');
     setBrandModalInput('');
@@ -207,9 +225,9 @@ export function Products() {
 
   const allCategories = useMemo(() => {
     const fromProducts = products.map((p) => p.category).filter(Boolean);
-    const merged = [...new Set([...fromProducts])].sort();
+    const merged = [...new Set([...fromProducts, ...customCategories])].sort();
     return merged;
-  }, [products]);
+  }, [products, customCategories]);
 
   // Marcas disponibles según la categoría elegida (filtro en cascada).
   const availableBrands = useMemo(() => {
@@ -228,12 +246,13 @@ export function Products() {
     });
   }, [products, search, categoryFilter, brandFilter, useFilter, stockFilter]);
 
-  const openCreate = () => { setEditing(null); setForm(emptyForm); setNewCategory(''); setModalOpen(true); };
+  const openCreate = () => { setEditing(null); setForm(emptyForm); setNewCategory(''); setCountingNew(false); setCountingBatch(false); setShowReponer(false); setBatchBarcode(''); setModalOpen(true); };
 
   const openEdit = (product: Product) => {
     setEditing(product);
     setShowReponer(false);
-    setBatchQty(''); setBatchExpiry('');
+    setCountingNew(false); setCountingBatch(false);
+    setBatchQty(''); setBatchExpiry(''); setBatchBarcode('');
     setNewCategory('');
     setForm({
       name: product.name, barcode: product.barcode ?? '', category: product.category,
@@ -250,8 +269,11 @@ export function Products() {
   // ─── Lotes ───────────────────────────────────────────────
   const [batchQty, setBatchQty] = useState('');
   const [batchExpiry, setBatchExpiry] = useState('');
+  const [batchBarcode, setBatchBarcode] = useState(''); // código de la caja/lote que llega (puede diferir del principal)
   const [batchBusy, setBatchBusy] = useState(false);
   const [showReponer, setShowReponer] = useState(false);
+  const [countingNew, setCountingNew] = useState(false);   // contar stock inicial escaneando
+  const [countingBatch, setCountingBatch] = useState(false); // contar reposición escaneando
 
   // Vuelve a cargar el producto en edición (y la lista) tras cambiar lotes.
   const reloadEditing = async () => {
@@ -272,8 +294,8 @@ export function Products() {
     if (!qty || qty < 1) { show('Ingresa una cantidad válida', 'error'); return; }
     setBatchBusy(true);
     try {
-      await batchesApi.add(editing.id, { quantity: qty, expiryDate: batchExpiry ? new Date(batchExpiry).toISOString() : null });
-      setBatchQty(''); setBatchExpiry(''); setShowReponer(false);
+      await batchesApi.add(editing.id, { quantity: qty, barcode: batchBarcode.trim() || null, expiryDate: batchExpiry ? toExpiryISO(batchExpiry) : null });
+      setBatchQty(''); setBatchExpiry(''); setBatchBarcode(''); setShowReponer(false);
       await reloadEditing();
       show('Stock repuesto (lote agregado)');
     } catch (e: any) { show(e.message || 'Error al agregar lote', 'error'); }
@@ -305,7 +327,7 @@ export function Products() {
       stock: parseInt(form.stock) || 0, min_stock: parseInt(form.min_stock) || 0,
       supplier_id: form.supplier_id || null, active: form.active,
       use: form.use ? titleCase(form.use) : null,
-      expiry_date: form.expiry_date ? new Date(form.expiry_date).toISOString() : null,
+      expiry_date: form.expiry_date ? toExpiryISO(form.expiry_date) : null,
     };
 
     let hasError = false;
@@ -330,11 +352,31 @@ export function Products() {
     setDeleteId(null);
   };
 
+  // Busca un producto por cualquiera de sus códigos: el principal o el de algún lote.
+  const findByCode = (code: string) =>
+    products.find((x) => x.barcode === code || x.batches?.some((b) => b.barcode === code));
+
   const handleScan = (code: string) => {
     if (scannerTarget === 'filter') setSearch(code);
+    else if (scannerTarget === 'batch') setBatchBarcode(code);
     else setForm((f) => ({ ...f, barcode: code }));
     setScannerOpen(false);
   };
+
+  // Con el modal abierto, el lector físico llena el campo Código sin necesidad
+  // de hacer clic en él. En "Reponer stock" llena el código del lote nuevo.
+  useBarcodeScanner((code) => {
+    if (showReponer) { setBatchBarcode(code); show(`Código del lote: ${code}`); }
+    else { setForm((f) => ({ ...f, barcode: code })); show(`Código capturado: ${code}`); }
+  }, { enabled: modalOpen && !countingNew && !countingBatch });
+
+  // En la lista (modal cerrado): escanear el código de un producto que llega
+  // abre su ficha directamente en "Reponer stock". Si no existe, lo busca.
+  useBarcodeScanner((code) => {
+    const p = findByCode(code);
+    if (p) { openEdit(p); setShowReponer(true); show(`Reponer stock: ${p.name}`); }
+    else { setSearch(code); show(`Código no registrado: ${code}`, 'error'); }
+  }, { enabled: !modalOpen });
 
   const activeFilters = categoryFilter !== 'all' || brandFilter !== 'all' || useFilter !== 'all' || stockFilter !== 'all';
   const lowStockCount = products.filter((p) => p.stock <= p.min_stock && p.stock > 0).length;
@@ -493,7 +535,7 @@ export function Products() {
                     <td className="px-4 py-3">
                       <span className={`badge ${stockLevel === 'out' ? 'bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300' : stockLevel === 'low' ? 'bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300' : 'bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300'}`}>{product.stock}</span>
                     </td>
-                    <td className="px-4 py-3">{exp ? <span className={`badge ${exp.cls}`}>{exp.label}</span> : (product.expiry_date ? formatDate(product.expiry_date) : '—')}</td>
+                    <td className="px-4 py-3">{exp ? <span className={`badge ${exp.cls}`}>{exp.label}</span> : (product.expiry_date ? formatExpiry(product.expiry_date) : '—')}</td>
                     {canEdit && (
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
@@ -534,7 +576,7 @@ export function Products() {
             <div>
               <label className="label">Código de barras</label>
               <div className="flex gap-2">
-                <input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} className="input" placeholder="Escanear o digitar" />
+                <input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} className="input" placeholder="Escanear o digitar" />
                 <button type="button" onClick={() => { setScannerTarget('form'); setScannerOpen(true); }} className="btn-secondary px-3"><ScanLine size={18} /></button>
               </div>
             </div>
@@ -608,7 +650,7 @@ export function Products() {
 
             <div>
               <label className="label">Fecha de caducidad {editing ? '(lote más próximo)' : ''}</label>
-              <input type="date" value={form.expiry_date} onChange={(e) => setForm({ ...form, expiry_date: e.target.value })} className={`input ${editing ? 'bg-neutral-100 dark:bg-neutral-800 cursor-default' : ''}`} readOnly={!!editing} />
+              <ExpiryInput value={form.expiry_date} onChange={(v) => setForm({ ...form, expiry_date: v })} disabled={!!editing} />
               {editing && <p className="text-xs text-neutral-400 mt-1">Se gestiona por lotes (abajo).</p>}
             </div>
 
@@ -651,8 +693,23 @@ export function Products() {
 
             <div>
               <label className="label">Stock {editing ? '(suma de lotes)' : '*'}</label>
-              <input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: soloEnteros(e.target.value) })} className={`input ${editing ? 'bg-neutral-100 dark:bg-neutral-800 cursor-default' : ''}`} readOnly={!!editing} placeholder="0" required={!editing} />
-              {editing && <p className="text-xs text-neutral-400 mt-1">Se gestiona por lotes (abajo).</p>}
+              {editing ? (
+                <>
+                  <input type="number" min="0" value={form.stock} className="input bg-neutral-100 dark:bg-neutral-800 cursor-default" readOnly placeholder="0" />
+                  <p className="text-xs text-neutral-400 mt-1">Se gestiona por lotes (abajo).</p>
+                </>
+              ) : countingNew ? (
+                <ScanCounter
+                  expectedCode={form.barcode || null}
+                  onFinish={(n, code) => { setForm((f) => ({ ...f, stock: String(n), barcode: f.barcode || code })); setCountingNew(false); }}
+                  onCancel={() => setCountingNew(false)}
+                />
+              ) : (
+                <div className="flex gap-2">
+                  <input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: soloEnteros(e.target.value) })} className="input" placeholder="0" required />
+                  <button type="button" onClick={() => setCountingNew(true)} className="btn-secondary px-3 shrink-0" title="Contar escaneando cada unidad"><ScanLine size={18} /></button>
+                </div>
+              )}
             </div>
 
             <div>
@@ -676,7 +733,8 @@ export function Products() {
                     {editing.batches!.map((b) => (
                       <div key={b.id} className="flex items-center justify-between gap-3 text-sm py-1 border-b border-neutral-100 dark:border-neutral-800 last:border-0">
                         <span className="text-neutral-700 dark:text-neutral-200 font-medium">{b.quantity} u.</span>
-                        <span className="text-neutral-500 dark:text-neutral-400 flex-1 text-right">{b.expiry_date ? `Vence: ${formatDate(b.expiry_date)}` : 'Sin fecha'}</span>
+                        {b.barcode && <span className="text-xs font-mono text-neutral-400 dark:text-neutral-500 bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded">{b.barcode}</span>}
+                        <span className="text-neutral-500 dark:text-neutral-400 flex-1 text-right">{b.expiry_date ? `Vence: ${formatExpiry(b.expiry_date)}` : 'Sin fecha'}</span>
                         <button type="button" onClick={() => handleRemoveBatch(b.id)} disabled={batchBusy} className="p-1 rounded text-neutral-400 hover:text-error-600 disabled:opacity-40"><Trash2 size={14} /></button>
                       </div>
                     ))}
@@ -687,18 +745,39 @@ export function Products() {
                 ) : (
                   <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800/40 p-3 space-y-2">
                     <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Nuevo lote (reposición)</p>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <div className="sm:w-36">
-                        <label className="label">Cantidad</label>
-                        <input type="number" min="1" value={batchQty} onChange={(e) => setBatchQty(soloEnteros(e.target.value))} className="input" placeholder="0" />
-                      </div>
-                      <div className="flex-1">
-                        <label className="label">Fecha de caducidad</label>
-                        <input type="date" value={batchExpiry} onChange={(e) => setBatchExpiry(e.target.value)} className="input" />
-                      </div>
-                    </div>
+                    {countingBatch ? (
+                      <ScanCounter
+                        expectedCode={batchBarcode.trim() || editing.barcode}
+                        onFinish={(n, code) => { setBatchQty(String(n)); if (!batchBarcode.trim() && code) setBatchBarcode(code); setCountingBatch(false); }}
+                        onCancel={() => setCountingBatch(false)}
+                      />
+                    ) : (
+                      <>
+                        <div>
+                          <label className="label">Código de barras de esta caja (opcional)</label>
+                          <div className="flex gap-2">
+                            <input value={batchBarcode} onChange={(e) => setBatchBarcode(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} className="input" placeholder={editing.barcode ? `Si es distinto al principal (${editing.barcode})` : 'Escanear o digitar'} />
+                            <button type="button" onClick={() => { setScannerTarget('batch'); setScannerOpen(true); }} className="btn-secondary px-3 shrink-0"><ScanLine size={18} /></button>
+                          </div>
+                          <p className="text-xs text-neutral-400 mt-1">Déjalo vacío si la caja trae el mismo código del producto.</p>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <div className="sm:w-40">
+                            <label className="label">Cantidad</label>
+                            <div className="flex gap-2">
+                              <input type="number" min="1" value={batchQty} onChange={(e) => setBatchQty(soloEnteros(e.target.value))} className="input" placeholder="0" />
+                              <button type="button" onClick={() => setCountingBatch(true)} className="btn-secondary px-3 shrink-0" title="Contar escaneando cada unidad"><ScanLine size={18} /></button>
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <label className="label">Fecha de caducidad</label>
+                            <ExpiryInput value={batchExpiry} onChange={setBatchExpiry} />
+                          </div>
+                        </div>
+                      </>
+                    )}
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => { setShowReponer(false); setBatchQty(''); setBatchExpiry(''); }} className="btn-secondary flex-1">Cancelar</button>
+                      <button type="button" onClick={() => { setShowReponer(false); setCountingBatch(false); setBatchQty(''); setBatchExpiry(''); setBatchBarcode(''); }} className="btn-secondary flex-1">Cancelar</button>
                       <button type="button" onClick={handleAddBatch} disabled={batchBusy} className="btn-primary flex-1">{batchBusy ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Agregar lote</button>
                     </div>
                   </div>

@@ -21,7 +21,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { supabase, Sale, Product, formatCurrency, formatDateTime, formatDate, CATEGORIES } from '@/lib/supabase';
+import { supabase, Sale, Product, formatCurrency, formatDateTime, formatExpiry, CATEGORIES } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 
 type Period = 'today' | 'week' | 'month' | 'year';
@@ -349,7 +349,7 @@ export function Dashboard() {
                   <div key={product.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200 truncate">{product.name}</p>
-                      <p className="text-xs text-neutral-400 dark:text-neutral-500">Vence: {formatDate(product.expiry_date as string)}</p>
+                      <p className="text-xs text-neutral-400 dark:text-neutral-500">Vence: {formatExpiry(product.expiry_date as string)}</p>
                     </div>
                     <span className={`badge ${expired ? 'bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300' : 'bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300'}`}>
                       {expired ? 'Vencido' : `${days} d`}
